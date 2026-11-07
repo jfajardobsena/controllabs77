@@ -43,7 +43,7 @@ class TypeOrmLoanRepository {
     }
     toDomain(entity) {
         return {
-            id: entity.id,
+            id: Number(entity.id),
             roomId: entity.roomId,
             instructorId: entity.instructorId,
             guardaId: entity.guardaId,

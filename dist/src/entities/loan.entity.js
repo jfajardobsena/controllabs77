@@ -23,35 +23,35 @@ let LoanEntity = class LoanEntity {
 };
 exports.LoanEntity = LoanEntity;
 __decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)(),
+    (0, typeorm_1.PrimaryGeneratedColumn)({ type: 'bigint', name: 'id' }),
     __metadata("design:type", Number)
 ], LoanEntity.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'uuid' }),
+    (0, typeorm_1.Column)({ type: 'uuid', name: 'room_id' }),
     __metadata("design:type", String)
 ], LoanEntity.prototype, "roomId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'uuid' }),
+    (0, typeorm_1.Column)({ type: 'uuid', name: 'instructor_id' }),
     __metadata("design:type", String)
 ], LoanEntity.prototype, "instructorId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'uuid' }),
+    (0, typeorm_1.Column)({ type: 'uuid', name: 'guarda_id' }),
     __metadata("design:type", String)
 ], LoanEntity.prototype, "guardaId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'int' }),
+    (0, typeorm_1.Column)({ type: 'int', name: 'numero_pc' }),
     __metadata("design:type", Number)
 ], LoanEntity.prototype, "numeroPc", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50 }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 24, name: 'estado' }),
     __metadata("design:type", String)
 ], LoanEntity.prototype, "estado", void 0);
 __decorate([
-    (0, typeorm_1.CreateDateColumn)({ type: 'timestamptz' }),
+    (0, typeorm_1.CreateDateColumn)({ type: 'timestamptz', name: 'created_at' }),
     __metadata("design:type", Date)
 ], LoanEntity.prototype, "createdAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'timestamptz', nullable: true }),
+    (0, typeorm_1.Column)({ type: 'timestamptz', name: 'accepted_at', nullable: true }),
     __metadata("design:type", Object)
 ], LoanEntity.prototype, "acceptedAt", void 0);
 exports.LoanEntity = LoanEntity = __decorate([

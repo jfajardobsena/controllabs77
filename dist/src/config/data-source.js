@@ -12,7 +12,7 @@ exports.AppDataSource = new typeorm_1.DataSource({
     password: process.env.DB_PASSWORD ?? 'postgres',
     database: process.env.DB_NAME ?? 'controllabs',
     schema: process.env.DB_SCHEMA ?? 'public',
-    synchronize: process.env.NODE_ENV !== 'production',
+    synchronize: false,
     logging: process.env.NODE_ENV !== 'production',
     entities: [loan_entity_1.LoanEntity],
     migrations: [],

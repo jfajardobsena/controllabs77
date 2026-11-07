@@ -11,7 +11,11 @@ export class LoanController {
   ): Promise<void> => {
     try {
       const loan = await loanService.createLoan(req.body);
-      res.status(201).json({ success: true, data: loan });
+      res.status(201).json({
+        success: true,
+        message: 'Préstamo registrado correctamente.',
+        data: loan
+      });
     } catch (error) {
       next(error);
     }
@@ -29,7 +33,11 @@ export class LoanController {
       }
 
       const loans = await loanService.getLoans({ roomId });
-      res.status(200).json({ success: true, data: loans });
+      res.status(200).json({
+        success: true,
+        message: 'Préstamos consultados correctamente.',
+        data: loans
+      });
     } catch (error) {
       next(error);
     }
@@ -42,7 +50,11 @@ export class LoanController {
   ): Promise<void> => {
     try {
       const loan = await loanService.getLoanDetail(Number(req.params.id));
-      res.status(200).json({ success: true, data: loan });
+      res.status(200).json({
+        success: true,
+        message: 'Préstamo consultado correctamente.',
+        data: loan
+      });
     } catch (error) {
       next(error);
     }
@@ -55,7 +67,11 @@ export class LoanController {
   ): Promise<void> => {
     try {
       const loan = await loanService.acceptLoan(Number(req.params.id));
-      res.status(200).json({ success: true, data: loan });
+      res.status(200).json({
+        success: true,
+        message: 'Préstamo aceptado exitosamente.',
+        data: loan
+      });
     } catch (error) {
       next(error);
     }
