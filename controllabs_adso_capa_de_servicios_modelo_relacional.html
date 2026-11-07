@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENA ADSO - ControlLabs: Capa de Servicios & Modelo Relacional</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sena: {
+                            green: '#39A900',
+                            dark: '#1e1e1e',
+                            lightGreen: '#eef9ea',
+                            accent: '#F57C00',
+                            gray: '#f8fafc',
+                            blue: '#0284c7'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'Fira Code', monospace; }
+        .tab-btn.active { background-color: #39A900; color: #ffffff; border-color: #39A900; }
+        .sub-tab.active { border-bottom: 3px solid #39A900; color: #39A900; font-weight: 700; background-color: #f8fafc; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-sena-green selection:text-white">
+
+    <!-- Header Navbar SENA -->
+    <header class="bg-sena-dark text-white border-b-4 border-sena-green sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <svg class="h-9 w-9 text-sena-green fill-current" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#39A900" stroke-width="6"/>
+                    <path d="M50 20 L50 80 M20 50 L80 50" stroke="#39A900" stroke-width="6" stroke-linecap="round"/>
+                    <circle cx="50" cy="50" r="15" fill="#39A900"/>
+                </svg>
+                <div>
+                    <h1 class="text-md sm:text-lg font-bold tracking-tight">SENA <span class="text-sena-green font-extrabold">ADSO</span></h1>
+                    <p class="text-[10px] sm:text-xs text-slate-400">ControlLabs • Capa de Servicios & Modelo Relacional</p>
+                </div>
+            </div>
+
+            <!-- Selector de Secciones Principales -->
+            <div class="flex items-center space-x-2 bg-slate-900 p-1.5 rounded-xl border border-slate-700 text-xs font-mono">
+                <button onclick="switchTab('services')" id="btn-tab-services" class="tab-btn active px-3 py-1.5 rounded-lg transition-all font-bold flex items-center gap-1.5">
+                    ⚙️ Capa de Servicios & Lógica
+                </button>
+                <button onclick="switchTab('db')" id="btn-tab-db" class="text-slate-300 hover:text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5">
+                    🗄️ Modelo Relacional & 5 Módulos
+                </button>
+                <button onclick="switchTab('roadmap')" id="btn-tab-roadmap" class="text-slate-300 hover:text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5">
+                    🧭 Guía de módulos
+                </button>
+                <button onclick="switchTab('code')" id="btn-tab-code" class="text-slate-300 hover:text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5">
+                    💻 Código Service & Repositorio
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- ================================================= -->
+        <!-- PESTAÑA 1: CAPA DE SERVICIOS Y REGLAS DE NEGOCIO -->
+        <!-- ================================================= -->
+        <div id="section-services" class="space-y-6">
+            <div class="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                <div class="border-l-4 border-sena-green pl-4">
+                    <h3 class="text-2xl font-bold text-sena-dark tracking-tight">Sesión 4: implementar la capa de servicios sobre la arquitectura actual</h3>
+                    <p class="text-slate-500 text-sm">Continuidad de la Sesión 3: el middleware valida el HTTP, el controlador adapta la petición, el servicio aplica reglas y el repositorio persiste.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs font-mono">
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                        <span class="bg-sena-blue text-white px-2.5 py-1 rounded font-bold">1. Controller (Express)</span>
+                        <p class="text-slate-600 font-sans leading-relaxed">
+                            Recibe <code class="font-mono">req</code> y <code class="font-mono">res</code>, extrae parámetros (<code class="font-mono">req.params</code>, <code class="font-mono">req.query</code>, <code class="font-mono">req.body</code>) y delega al Servicio.
+                        </p>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl space-y-3">
+                        <span class="bg-sena-green text-white px-2.5 py-1 rounded font-bold">2. Service (Reglas de Negocio)</span>
+                        <p class="text-slate-700 font-sans leading-relaxed">
+                            Aplica reglas del préstamo (cantidad positiva y transición de estado). No recibe <code class="font-mono">Request</code>/<code class="font-mono">Response</code> ni conoce Express.
+                        </p>
+                    </div>
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                        <span class="bg-purple-600 text-white px-2.5 py-1 rounded font-bold">3. Repository / DB</span>
+                        <p class="text-slate-600 font-sans leading-relaxed">
+                            Implementa el contrato tipado del servicio. En esta sesión se usa memoria temporal; PostgreSQL queda como proyección, no como una conexión ya configurada.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Simulador Interactivo de Servicios -->
+                <div class="bg-slate-900 text-white p-6 md:p-8 rounded-3xl border border-slate-800 space-y-6">
+                    <div class="flex flex-wrap items-center justify-between border-b border-slate-800 pb-4 gap-3">
+                        <div>
+                            <span class="text-emerald-400 font-bold text-sm">🧪 Simulador Interactivo de la Capa de Servicios</span>
+                            <p class="text-slate-400 text-xs mt-1">Recorrido didáctico del flujo actual de préstamos. La simulación no ejecuta el backend.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 text-xs">
+                            <button onclick="simulateServiceAction('create')" class="bg-sena-green hover:bg-emerald-600 text-white px-3 py-1.5 rounded-xl font-bold transition-all">Crear válido</button>
+                            <button onclick="simulateServiceAction('rule')" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-xl font-bold transition-all">Regla de negocio</button>
+                            <button onclick="simulateServiceAction('missing')" class="bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 rounded-xl font-bold transition-all">No encontrado</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 font-mono text-xs text-emerald-300 overflow-x-auto min-h-[140px]" id="service-output">
+                        // Seleccione un escenario para ver qué capa lo procesa y qué respuesta HTTP resulta...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================= -->
+        <!-- PESTAÑA 2: MODELO RELACIONAL -->
+        <!-- ================================================= -->
+        <div id="section-db" class="hidden space-y-6">
+            <div class="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                <div class="border-l-4 border-sena-blue pl-4">
+                    <h3 class="text-2xl font-bold text-sena-dark tracking-tight">2. Modelo Relacional de Base de Datos (SQL DDL Estricto con PK, FK y Tipos)</h3>
+                    <p class="text-slate-500 text-sm">Proyección PostgreSQL para usuarios, ambientes, inventario/préstamos y novedades. El panel es una consulta derivada; no duplica datos en otra tabla.</p>
+                </div>
+
+                <!-- Visor de SQL DDL Relacional -->
+                <pre class="bg-slate-950 text-emerald-300 p-5 rounded-2xl font-mono text-xs overflow-x-auto leading-relaxed"><code>-- Proyección PostgreSQL; aún no conectada al backend de esta sesión.
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) NOT NULL UNIQUE,
+  nombre VARCHAR(150) NOT NULL,
+  rol VARCHAR(20) NOT NULL CHECK (rol IN ('ADMIN', 'GUARDA', 'INSTRUCTOR')),
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE rooms (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre VARCHAR(100) NOT NULL UNIQUE,
+  bloque VARCHAR(50) NOT NULL,
+  capacidad_pcs INTEGER NOT NULL CHECK (capacidad_pcs >= 0),
+  estado VARCHAR(20) NOT NULL DEFAULT 'OPERATIVO'
+    CHECK (estado IN ('OPERATIVO', 'MANTENIMIENTO', 'INACTIVO'))
+);
+
+CREATE TABLE equipment (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  placa_sena VARCHAR(50) NOT NULL UNIQUE,
+  codigo_activo VARCHAR(100) NOT NULL UNIQUE,
+  tipo VARCHAR(50) NOT NULL
+    CHECK (tipo IN ('COMPUTADOR', 'MOUSE', 'TECLADO', 'CARGADOR', 'TELEVISOR', 'CONTROL_TV')),
+  room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE RESTRICT,
+  estado VARCHAR(20) NOT NULL DEFAULT 'OPERATIVO'
+    CHECK (estado IN ('OPERATIVO', 'MANTENIMIENTO', 'FUERA_DE_SERVICIO'))
+);
+
+CREATE TABLE loans (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE RESTRICT,
+  instructor_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  guarda_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  numero_pc INTEGER NOT NULL CHECK (numero_pc > 0),
+  estado VARCHAR(24) NOT NULL DEFAULT 'PENDIENTE_APROBACION'
+    CHECK (estado IN ('PENDIENTE_APROBACION', 'APROBADO_Y_FIRMADO')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  accepted_at TIMESTAMPTZ,
+  CHECK ((estado = 'PENDIENTE_APROBACION' AND accepted_at IS NULL)
+      OR (estado = 'APROBADO_Y_FIRMADO' AND accepted_at IS NOT NULL))
+);
+
+CREATE TABLE incidents (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  equipment_id UUID NOT NULL REFERENCES equipment(id) ON DELETE RESTRICT,
+  reported_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  descripcion TEXT NOT NULL,
+  prioridad VARCHAR(10) NOT NULL CHECK (prioridad IN ('BAJA', 'MEDIA', 'ALTA')),
+  estado VARCHAR(16) NOT NULL DEFAULT 'PENDIENTE'
+    CHECK (estado IN ('PENDIENTE', 'EN_PROCESO', 'RESUELTA')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_equipment_room ON equipment(room_id);
+CREATE INDEX idx_loans_room_created ON loans(room_id, created_at DESC);
+CREATE INDEX idx_incidents_equipment_status ON incidents(equipment_id, estado);
+-- El panel (quinto módulo funcional) se calcula con consultas/vistas
+-- sobre usuarios, ambientes, inventario, préstamos y novedades; no se duplica.</code></pre>
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 text-xs text-amber-950 space-y-2">
+                    <p><strong>DTO de creación alineado por significado, no por el nombre SQL:</strong> el contrato HTTP usa camelCase y el futuro repositorio PostgreSQL traducirá estos campos a snake_case. La implementación actual guarda préstamos en memoria y sus UUID no se resuelven ni se comprueba que existan en catálogos. <code>guardaId</code> es provisional para la práctica; con autenticación debe derivarse de la identidad verificada, no confiar en el valor enviado por el cliente. El esquema definitivo no incluye una relación préstamo-equipo: el préstamo conserva la cantidad, pero no identifica activos específicos ni registra su devolución individual.</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-[11px] text-left border-collapse">
+                            <thead><tr class="bg-amber-100"><th class="p-2">ICreateLoanDTO (API)</th><th class="p-2">Columna SQL</th><th class="p-2">Por qué no se envía en el DTO de creación</th></tr></thead>
+                            <tbody>
+                                <tr class="border-b border-amber-200"><td class="p-2"><code>roomId</code></td><td class="p-2"><code>loans.room_id</code></td><td class="p-2">UUID de la FK a <code>rooms</code>.</td></tr>
+                                <tr class="border-b border-amber-200"><td class="p-2"><code>instructorId</code></td><td class="p-2"><code>loans.instructor_id</code></td><td class="p-2">UUID de la FK a <code>users</code>.</td></tr>
+                                <tr class="border-b border-amber-200"><td class="p-2"><code>guardaId</code></td><td class="p-2"><code>loans.guarda_id</code></td><td class="p-2">UUID de la FK; por ahora es dato de práctica, luego debe salir de autenticación.</td></tr>
+                                <tr class="border-b border-amber-200"><td class="p-2"><code>numeroPc</code></td><td class="p-2"><code>loans.numero_pc</code></td><td class="p-2">Cantidad de computadores declarada en la solicitud.</td></tr>
+                                <tr><td class="p-2">No se envían</td><td class="p-2"><code>loans.id</code>, <code>estado</code>, <code>created_at</code>, <code>accepted_at</code></td><td class="p-2">Los genera la base o los controla el caso de uso de aceptación.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p>La implementación actual guarda los préstamos en un <code>Map</code> del proceso; se pierden al reiniciar el servidor. El DDL es una proyección para una integración posterior con PostgreSQL, no una conexión ya configurada.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================= -->
+        <!-- PESTAÑA 3: GUÍA DE EVOLUCIÓN POR MÓDULO -->
+        <!-- ================================================= -->
+        <div id="section-roadmap" class="hidden space-y-6">
+            <section class="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                <div class="border-l-4 border-amber-500 pl-4">
+                    <h3 class="text-2xl font-bold text-sena-dark tracking-tight">Guía para continuar: módulos, CRUD y reglas de negocio</h3>
+                    <p class="text-slate-500 text-sm">Una hoja de ruta de diseño para construir los servicios módulo por módulo. Las reglas son propuestas iniciales: confirmarlas con los responsables del proyecto antes de hacerlas obligatorias.</p>
+                </div>
+
+                <div class="bg-sky-50 border border-sky-200 p-5 rounded-2xl text-xs text-sky-950 space-y-2">
+                    <h4 class="font-bold text-sm">Antes de programar cada módulo</h4>
+                    <ol class="list-decimal list-inside space-y-1">
+                        <li>Definir quién puede ejecutar cada acción. En la arquitectura actual aún no hay autenticación; no confiar en un rol recibido en el body.</li>
+                        <li>Definir estados y transiciones permitidas, y qué significa archivar/eliminar.</li>
+                        <li>Definir las relaciones: ambiente ↔ equipo, usuario ↔ préstamo, equipo ↔ novedad.</li>
+                        <li>Separar validación de transporte (middleware) de regla de negocio (servicio).</li>
+                        <li>Escribir ejemplos de éxito y rechazo antes de conectar PostgreSQL.</li>
+                    </ol>
+                </div>
+
+                <div class="bg-slate-900 text-white p-5 md:p-6 rounded-2xl space-y-3">
+                    <h4 class="font-bold text-sm text-emerald-300">Estructura sugerida al escalar por módulos</h4>
+                    <pre class="font-mono text-[11px] leading-relaxed text-emerald-100 overflow-x-auto">src/
+  dtos/              # Contratos de entrada HTTP por recurso
+  middlewares/       # Validación del body/query/params y errores HTTP
+  controllers/       # Adaptadores Express: request → caso de uso → response
+  services/          # Reglas y casos de uso del proyecto
+  repositories/      # Interfaces y adaptadores de persistencia
+  errors/            # Errores reconocibles por la aplicación
+  container.ts       # Punto de composición: crea instancias y las conecta
+  routes/            # Endpoints y composición del pipeline</pre>
+                    <p class="text-[11px] text-slate-300">Para un proyecto pequeño, mantener archivos planos es suficiente: <code>user.service.ts</code>, <code>room.service.ts</code>, etc. Si crece, agrupar cada módulo en carpetas (por ejemplo <code>src/modules/users/</code>) ayuda a localizar DTO, controller, service y repository sin crear capas nuevas por moda.</p>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                    <article class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <h4 class="font-bold text-lg text-sena-dark">1. Usuarios y roles</h4>
+                            <span class="bg-purple-100 text-purple-800 px-2.5 py-1 rounded-full text-[10px] font-bold">Catálogo / identidad</span>
+                        </div>
+                        <p class="text-xs text-slate-600">Administra las personas que participan en el control de ambientes: guardas, instructores y administradores. Este módulo no debe tratar el rol declarado por el cliente como una identidad comprobada.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+                            <div class="bg-slate-50 p-3 rounded-xl">
+                                <p class="font-bold text-slate-800 mb-1">Operaciones sugeridas</p>
+                                <p><code>POST /users</code> crear; <code>GET /users</code> listar/filtrar; <code>GET /users/:id</code> detalle; <code>PATCH /users/:id</code> editar; <code>PATCH /users/:id/active</code> activar/desactivar.</p>
+                                <p class="mt-2 text-slate-600">Preferir desactivación a borrado físico cuando el usuario tenga préstamos o novedades asociados.</p>
+                            </div>
+                            <div class="bg-purple-50 p-3 rounded-xl">
+                                <p class="font-bold text-purple-950 mb-1">Reglas candidatas</p>
+                                <ul class="list-disc list-inside space-y-1 text-purple-950">
+                                    <li>Email normalizado y único.</li>
+                                    <li>Rol limitado a ADMIN, GUARDA o INSTRUCTOR.</li>
+                                    <li>No asignar préstamos ni registrar novedades a usuarios inactivos.</li>
+                                    <li>El usuario no cambia su rol por sí mismo; autorización requiere identidad autenticada.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-600"><strong>Archivos:</strong> <code>user.dto.ts</code> + middleware para formato; <code>user.repository.ts</code> y adaptador para persistencia; <code>user.service.ts</code> para unicidad/estado; <code>user.controller.ts</code> y <code>user.routes.ts</code> para HTTP. Errores esperados: duplicado <code>409</code>, usuario inexistente <code>404</code>, input inválido <code>400</code>.</p>
+                    </article>
+
+                    <article class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <h4 class="font-bold text-lg text-sena-dark">2. Ambientes</h4>
+                            <span class="bg-sky-100 text-sky-800 px-2.5 py-1 rounded-full text-[10px] font-bold">Espacios físicos</span>
+                        </div>
+                        <p class="text-xs text-slate-600">Mantiene los espacios donde se ubican los activos. El ambiente es una entidad independiente; el inventario mantiene la relación con él mediante una clave foránea.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+                            <div class="bg-slate-50 p-3 rounded-xl">
+                                <p class="font-bold text-slate-800 mb-1">Operaciones sugeridas</p>
+                                <p><code>POST /rooms</code>; <code>GET /rooms</code> con filtros; <code>GET /rooms/:id</code>; <code>PATCH /rooms/:id</code>; <code>PATCH /rooms/:id/status</code>.</p>
+                                <p class="mt-2 text-slate-600">Evitar DELETE físico si existe historial relacionado.</p>
+                            </div>
+                            <div class="bg-sky-50 p-3 rounded-xl">
+                                <p class="font-bold text-sky-950 mb-1">Reglas candidatas</p>
+                                <ul class="list-disc list-inside space-y-1 text-sky-950">
+                                    <li>Nombre único y capacidad PC no negativa.</li>
+                                    <li>Estados controlados: OPERATIVO, MANTENIMIENTO, INACTIVO.</li>
+                                    <li>Un ambiente no operativo no permite asignar nuevos préstamos.</li>
+                                    <li>No reducir capacidad por debajo de los equipos instalados.</li>
+                                    <li>No eliminar mientras tenga activos o préstamos históricos.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-600"><strong>Archivos:</strong> <code>room.dto.ts</code>, validador de body/query/params, <code>room.repository.ts</code>, <code>room.service.ts</code>, controller y router. La consulta de capacidad instalada depende del repositorio de equipos; la regla de no excederla pertenece al servicio.</p>
+                    </article>
+
+                    <article class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <h4 class="font-bold text-lg text-sena-dark">3. Inventario y equipos</h4>
+                            <span class="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full text-[10px] font-bold">Activos físicos</span>
+                        </div>
+                        <p class="text-xs text-slate-600">Cada equipo representa un activo identificable, no solo una cantidad agregada. Relacionarlo con un ambiente permite conocer ubicación, estado técnico y disponibilidad.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+                            <div class="bg-slate-50 p-3 rounded-xl">
+                                <p class="font-bold text-slate-800 mb-1">Operaciones sugeridas</p>
+                                <p><code>POST /equipment</code>; <code>GET /equipment</code> por ambiente/estado; <code>GET /equipment/:id</code>; <code>PATCH /equipment/:id</code>; acción para mover o retirar.</p>
+                                <p class="mt-2 text-slate-600">Retirar/archivar conserva el rastro de préstamos y novedades.</p>
+                            </div>
+                            <div class="bg-emerald-50 p-3 rounded-xl">
+                                <p class="font-bold text-emerald-950 mb-1">Reglas candidatas</p>
+                                <ul class="list-disc list-inside space-y-1 text-emerald-950">
+                                    <li>Código de activo único.</li>
+                                    <li>Estado limitado a OPERATIVO, MANTENIMIENTO o FUERA_DE_SERVICIO.</li>
+                                    <li>Solo equipos operativos y disponibles se prestan.</li>
+                                    <li>Un equipo fuera de servicio no puede asignarse ni trasladarse sin una operación autorizada.</li>
+                                    <li>El cambio de ambiente debe conservar historial y respetar capacidad.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-600"><strong>Archivos:</strong> <code>equipment.dto.ts</code>, validadores, repository, service, controller y routes. Al mover un activo, el servicio valida ambiente de destino operativo y capacidad; la persistencia aplica FK y restricciones de unicidad.</p>
+                    </article>
+
+                    <article class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <h4 class="font-bold text-lg text-sena-dark">4. Préstamos e inventario entregado</h4>
+                            <span class="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full text-[10px] font-bold">Flujo transversal</span>
+                        </div>
+                        <p class="text-xs text-slate-600">El flujo ya iniciado en esta sesión. El préstamo registra ambiente, instructor, guarda y cantidad de computadores; ya no enlaza activos concretos. Su aceptación es una transición controlada, no un CRUD genérico.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+                            <div class="bg-slate-50 p-3 rounded-xl">
+                                <p class="font-bold text-slate-800 mb-1">Operaciones sugeridas</p>
+                                <p><code>POST /loans</code>; <code>GET /loans</code> por filtros/paginación; <code>GET /loans/:id</code>; <code>PUT /loans/:id/accept</code>; futuras acciones explícitas para devolución/cancelación.</p>
+                                <p class="mt-2 text-slate-600">Evitar un <code>PATCH estado</code> arbitrario que salte el flujo.</p>
+                            </div>
+                            <div class="bg-amber-50 p-3 rounded-xl">
+                                <p class="font-bold text-amber-950 mb-1">Reglas de negocio y estado de implementación</p>
+                                <ul class="list-disc list-inside space-y-1 text-amber-950">
+                                    <li><strong>Implementada:</strong> número de PCs entero y mayor que cero; UUIDs de ambiente y usuarios con formato válido.</li>
+                                    <li><strong>Implementada:</strong> el registro nuevo inicia en <code>PENDIENTE_APROBACION</code>.</li>
+                                    <li><strong>Implementada:</strong> solo se acepta desde pendiente; la segunda aceptación produce conflicto.</li>
+                                    <li><strong>Pendiente de catálogos:</strong> verificar que ambiente, instructor y guarda existan y estén activos.</li>
+                                    <li><strong>No cubierta por este modelo:</strong> asociar activos concretos, validar disponibilidad y registrar devoluciones individuales requiere volver a agregar una relación préstamo-equipo o definir un mecanismo alternativo.</li>
+                                    <li><strong>Pendiente de autenticación:</strong> registrar el actor verificado y autorizar al instructor que acepta.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="bg-slate-950 text-emerald-200 p-4 rounded-xl font-mono text-[10px] leading-relaxed overflow-x-auto">Regla / capa / evidencia
+numeroPc es entero &gt; 0        → LoanService.createLoan → VALIDATION_ERROR (400)
+Datos HTTP con forma válida   → validateLoanPayload → 400 antes del servicio
+Estado inicial pendiente      → InMemoryLoanRepository.create
+Aceptar solo si está pendiente → repository.updateStatus(expectedStatus) → CONFLICT (409)
+Id inexistente                → LoanService.getLoanDetail / acceptLoan → NOT_FOUND (404)
+Ambiente/personas              → aún no verificable; falta consultar catálogos
+Activos individuales           → no quedan asociados con el modelo actual</div>
+                        <p class="text-[11px] text-slate-600"><strong>Archivos siguientes:</strong> faltan contratos/repositorios para validar ambiente y usuarios. Obtener guarda desde autenticación, no del body. Si el requisito es rastrear qué activo se presta o su devolución, habrá que diseñar explícitamente una relación alternativa; con este esquema no se puede hacer.</p>
+                    </article>
+
+                    <article class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <h4 class="font-bold text-lg text-sena-dark">5. Novedades / incidentes</h4>
+                            <span class="bg-rose-100 text-rose-800 px-2.5 py-1 rounded-full text-[10px] font-bold">Mantenimiento</span>
+                        </div>
+                        <p class="text-xs text-slate-600">Registra problemas ligados a activos y conserva su evolución. Un incidente resuelto no se borra: forma parte del historial del activo.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+                            <div class="bg-slate-50 p-3 rounded-xl">
+                                <p class="font-bold text-slate-800 mb-1">Operaciones sugeridas</p>
+                                <p><code>POST /incidents</code>; <code>GET /incidents</code> por estado/prioridad/activo; <code>GET /incidents/:id</code>; <code>PATCH /incidents/:id/status</code>; añadir comentario/solución si se requiere.</p>
+                                <p class="mt-2 text-slate-600">No ofrecer borrado normal del historial.</p>
+                            </div>
+                            <div class="bg-rose-50 p-3 rounded-xl">
+                                <p class="font-bold text-rose-950 mb-1">Reglas candidatas</p>
+                                <ul class="list-disc list-inside space-y-1 text-rose-950">
+                                    <li>Equipo y reportante deben existir.</li>
+                                    <li>Prioridad y estado usan catálogos cerrados.</li>
+                                    <li>Transiciones: PENDIENTE → EN_PROCESO → RESUELTA; reabrir requiere acción explícita.</li>
+                                    <li>Una novedad crítica puede bloquear nuevos préstamos del activo.</li>
+                                    <li>Resolver exige registrar fecha y responsable.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-600"><strong>Archivos:</strong> <code>incident.dto.ts</code>, middleware, repository, service, controller y routes. El servicio coordina el cambio de estado del incidente y, si el negocio lo confirma, el bloqueo del equipo; no se debe codificar esa política como supuesto sin validarla con el área responsable.</p>
+                    </article>
+
+                    <article class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <h4 class="font-bold text-lg text-sena-dark">6. Panel / dashboard</h4>
+                            <span class="bg-slate-200 text-slate-800 px-2.5 py-1 rounded-full text-[10px] font-bold">Consulta agregada</span>
+                        </div>
+                        <p class="text-xs text-slate-600">Presenta indicadores derivados de usuarios, ambientes, equipos, préstamos e incidentes. En principio es de solo lectura y no debe mantener copias manuales de esos datos.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+                            <div class="bg-slate-50 p-3 rounded-xl">
+                                <p class="font-bold text-slate-800 mb-1">Operaciones sugeridas</p>
+                                <p><code>GET /dashboard/summary</code>; <code>GET /dashboard/rooms/:id</code>; <code>GET /dashboard/incidents</code>. No crear CRUD hasta que exista una entidad propia que administrar.</p>
+                            </div>
+                            <div class="bg-slate-100 p-3 rounded-xl">
+                                <p class="font-bold text-slate-900 mb-1">Reglas candidatas</p>
+                                <ul class="list-disc list-inside space-y-1 text-slate-800">
+                                    <li>Definir numerador, denominador y ventana de tiempo de cada KPI.</li>
+                                    <li>Contar estados desde las fuentes actuales; no duplicarlos.</li>
+                                    <li>Aplicar filtros de permisos y ambiente.</li>
+                                    <li>Mostrar fecha de actualización si los indicadores se cachean.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-600"><strong>Archivos:</strong> DTO de query si hace falta; <code>dashboard.repository.ts</code> para consultas agregadas; <code>dashboard.service.ts</code> para coordinar indicadores; controller y routes. No se necesita un <code>dashboard.repository</code> de escritura ni tabla duplicada solo para mostrar conteos.</p>
+                    </article>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-200 p-5 rounded-2xl space-y-3">
+                    <h4 class="font-bold text-sm text-amber-950">Orden recomendado de implementación</h4>
+                    <ol class="list-decimal list-inside text-xs text-amber-950 space-y-1">
+                        <li>Usuarios e identidad: primero resolver cómo se identifica de forma confiable al guarda/instructor.</li>
+                        <li>Ambientes e inventario: son catálogos requeridos por los préstamos.</li>
+                        <li>Préstamos: alinear el DTO con identificadores de ambiente/usuarios y cantidad; definir aparte si el sistema necesita trazabilidad de equipos.</li>
+                        <li>Novedades: relacionarlas con activos y acordar si ciertos estados bloquean préstamos.</li>
+                        <li>Dashboard: calcular indicadores a partir de los módulos anteriores y acordar sus definiciones.</li>
+                    </ol>
+                    <p class="text-[11px] text-amber-950"><strong>En cada módulo:</strong> escribir primero contrato/DTO y reglas aceptadas; implementar repository y service; conectar controller/routes; probar 201/200, datos inválidos 400, recurso inexistente 404, duplicado o transición incompatible 409 y fallo inesperado 500. Al cambiar de memoria a PostgreSQL, migrar/crear esquema y adaptar el container sin mover reglas al controller.</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- ================================================= -->
+        <!-- PESTAÑA 4: CÓDIGO TÉCNICO SERVICE & REPOSITORIO -->
+        <!-- ================================================= -->
+        <div id="section-code" class="hidden space-y-6">
+            <div class="bg-slate-900 text-white p-6 md:p-8 rounded-3xl border border-slate-800 shadow-xl space-y-6 font-mono text-xs">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <span class="text-emerald-400 font-bold text-sm">📁 Implementación conectada a la arquitectura del proyecto</span>
+                    <span class="text-slate-400 text-[10px]">Clean Architecture SENA ADSO</span>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="bg-sky-950/60 p-4 rounded-xl text-[11px] text-sky-100 space-y-2">
+                        <p><strong>Contrato actualizado respecto a la Sesión 3:</strong> <code>POST /api/v1/loans</code> conserva la ruta, pero <code>ICreateLoanDTO</code> cambia de aula/nombres de personas a ids relacionados y cantidad: <code>roomId</code>, <code>instructorId</code>, <code>guardaId</code> y <code>numeroPc</code>. No incluye activos individuales porque el esquema definitivo no los vincula al préstamo. Reemplaza el DTO y el middleware por los bloques completos; la persistencia actual es temporal en memoria, no PostgreSQL. El contrato usa camelCase; el futuro repositorio PostgreSQL traduce los campos a columnas SQL snake_case.</p>
+                    </div>
+
+                    <section class="bg-white text-slate-800 p-5 md:p-7 rounded-2xl space-y-5">
+                        <div class="border-l-4 border-sena-blue pl-4">
+                            <h4 class="font-sans font-bold text-xl">Implementación completa: archivos listos para copiar y pegar</h4>
+                            <p class="font-sans text-xs text-slate-600 mt-1">Estos son archivos completos, con sus imports y rutas correctas, basados en la arquitectura que quedó al terminar la Sesión 3. Crea o reemplaza cada archivo indicado. Los bloques parciales de explicación que siguen son solo extractos; para implementar usa estos bloques completos.</p>
+                        </div>
+
+                        <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl font-sans text-[11px] text-amber-950 space-y-1">
+                                    <p><strong>Antes de pegar:</strong> conserva <code>src/middlewares/logger.middleware.ts</code>, <code>src/routes/index.ts</code> y el montaje de la aplicación de la sesión anterior. Como cambió el esquema de préstamos, reemplaza el DTO y su middleware con los ejemplos actualizados de abajo; sus rutas ya deben usar ese validador.</p>
+                                    <p>Los nuevos archivos son <code>src/errors/domain.error.ts</code>, <code>src/repositories/loan.repository.ts</code>, <code>src/repositories/in-memory-loan.repository.ts</code>, <code>src/services/loan.service.ts</code> y <code>src/container.ts</code>. Se reemplazan <code>src/controllers/loan.controller.ts</code> y <code>src/middlewares/errorHandler.middleware.ts</code>. Los datos se guardan temporalmente en memoria; no se instala ni configura PostgreSQL en esta sesión.</p>
+                        </div>
+
+                        <details open class="border border-slate-200 rounded-xl">
+                                    <summary class="cursor-pointer p-4 font-sans font-bold text-sm">0. Reemplazar src/dtos/loan.dto.ts — alinear la entrada a la tabla loans</summary>
+                                    <pre class="bg-slate-950 text-sky-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">export interface ICreateLoanDTO {
+  roomId: string;
+  instructorId: string;
+  guardaId: string;
+  numeroPc: number;
+}</pre>
+                                    <p class="font-sans p-4 text-[11px] text-slate-600"><code>roomId</code>, <code>instructorId</code> y <code>guardaId</code> corresponden a las FK del préstamo; <code>numeroPc</code> corresponde a <code>loans.numero_pc</code>. El repositorio PostgreSQL será responsable de convertir camelCase a snake_case; no se incluyen en el DTO los ids/fechas/estado generados. Este modelo no asigna activos concretos al préstamo. El repositorio en memoria tampoco comprueba que las referencias existan en catálogos. IDs de usuario enviados por body son solo datos de práctica, no identidad ni autorización confiable; al implementar autenticación, <code>guardaId</code> debe salir de la identidad verificada y no del body.</p>
+                                </details>
+
+                                <details open class="border border-slate-200 rounded-xl">
+                                    <summary class="cursor-pointer p-4 font-sans font-bold text-sm">0.1 Reemplazar src/middlewares/validateLoan.middleware.ts — comprobar el DTO real</summary>
+                                    <pre class="bg-slate-950 text-sky-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { Request, Response, NextFunction } from 'express';
+import { ICreateLoanDTO } from '../dtos/loan.dto';
+
+const isUuid = (value: unknown): value is string =&gt;
+  typeof value === 'string' &amp;&amp;
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
+const isCreateLoanDTO = (value: unknown): value is ICreateLoanDTO =&gt; {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const loan = value as Record&lt;string, unknown&gt;;
+  const allowedFields = new Set([
+    'roomId',
+    'instructorId',
+    'guardaId',
+    'numeroPc'
+  ]);
+  return (
+    Object.keys(loan).every((key) =&gt; allowedFields.has(key)) &amp;&amp;
+    isUuid(loan.roomId) &amp;&amp;
+    isUuid(loan.instructorId) &amp;&amp;
+    isUuid(loan.guardaId) &amp;&amp;
+    typeof loan.numeroPc === 'number' &amp;&amp;
+    Number.isInteger(loan.numeroPc)
+  );
+};
+
+export const validateLoanPayload = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void =&gt; {
+  const body: unknown = req.body;
+  if (!isCreateLoanDTO(body)) {
+    res.status(400).json({
+      success: false,
+      error: 'Datos del préstamo inválidos.'
+    });
+    return;
+  }
+  next();
+};</pre>
+                                    <p class="font-sans p-4 text-[11px] text-slate-600">El middleware verifica los tipos y formato UUID del JSON. No se envían ids de activos porque el esquema ya no vincula equipos con préstamos; la cantidad debe ser un entero positivo y esa regla se conserva en el servicio.</p>
+                                </details>
+
+                                <details open class="border border-slate-200 rounded-xl">
+                            <summary class="cursor-pointer p-4 font-sans font-bold text-sm">1. Crear src/errors/domain.error.ts</summary>
+                            <pre class="bg-slate-950 text-purple-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">export type DomainErrorCode = 'VALIDATION_ERROR' | 'NOT_FOUND' | 'CONFLICT';
+
+export class DomainError extends Error {
+  constructor(
+    public readonly code: DomainErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = 'DomainError';
+  }
+}</pre>
+                        </details>
+
+                        <details class="border border-slate-200 rounded-xl">
+                            <summary class="cursor-pointer p-4 font-sans font-bold text-sm">2. Crear src/repositories/loan.repository.ts — contrato de persistencia</summary>
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { ICreateLoanDTO } from '../dtos/loan.dto';
+
+export type LoanStatus = 'PENDIENTE_APROBACION' | 'APROBADO_Y_FIRMADO';
+
+export interface Loan extends ICreateLoanDTO {
+  id: number;
+  estado: LoanStatus;
+  createdAt: string;
+  acceptedAt: string | null;
+}
+
+export interface LoanFilters {
+  roomId?: string;
+}
+
+export interface LoanRepository {
+  create(input: ICreateLoanDTO): Promise&lt;Loan&gt;;
+  findAll(filters?: LoanFilters): Promise&lt;Loan[]&gt;;
+  findById(id: number): Promise&lt;Loan | null&gt;;
+  updateStatus(
+    id: number,
+    expectedStatus: LoanStatus,
+    status: LoanStatus
+  ): Promise&lt;Loan | null&gt;;
+}</pre>
+                        </details>
+
+                        <details open class="border border-emerald-200 rounded-xl">
+                            <summary class="cursor-pointer p-4 font-sans font-bold text-sm">3. Guardar temporalmente en memoria con src/repositories/in-memory-loan.repository.ts</summary>
+                            <div class="p-4 font-sans text-[11px] text-slate-700 space-y-2">
+                                <p>La aplicación usa este adaptador. El <code>Map</code> mantiene los préstamos mientras el proceso Node.js está activo; al reiniciar, comienza vacío. Es una opción sencilla para practicar capas y casos de uso antes de configurar una base de datos.</p>
+                            </div>
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">export class InMemoryLoanRepository implements LoanRepository {
+  private readonly loans = new Map&lt;number, Loan&gt;();
+  private nextId = 1;
+
+  public async create(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
+    const loan: Loan = {
+      ...input,
+      id: this.nextId++,
+      estado: 'PENDIENTE_APROBACION',
+      createdAt: new Date().toISOString(),
+      acceptedAt: null
+    };
+    this.loans.set(loan.id, loan);
+    return { ...loan };
+  }
+  // findAll, findById y updateStatus implementan el mismo contrato.
+}</pre>
+                            <p class="font-sans p-4 text-[11px] text-slate-600">El adaptador real contiene las cuatro operaciones del contrato y devuelve copias para que el consumidor no modifique directamente el objeto almacenado en el <code>Map</code>. Los datos no son locales permanentes: reiniciar el proceso los borra.</p>
+                        </details>
+
+                        <details open class="border border-slate-200 rounded-xl">
+                            <summary class="cursor-pointer p-4 font-sans font-bold text-sm">4. Crear src/services/loan.service.ts — completo, incluidos sus imports</summary>
+                            <pre class="bg-slate-950 text-sky-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { ICreateLoanDTO } from '../dtos/loan.dto';
+import { DomainError } from '../errors/domain.error';
+import {
+  Loan,
+  LoanFilters,
+  LoanRepository
+} from '../repositories/loan.repository';
+
+export class LoanService {
+  constructor(private readonly loanRepository: LoanRepository) {}
+
+  public async createLoan(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
+    if (!Number.isInteger(input.numeroPc) || input.numeroPc &lt;= 0) {
+      throw new DomainError(
+        'VALIDATION_ERROR',
+        'El número de PCs debe ser un entero positivo.'
+      );
+    }
+
+    return this.loanRepository.create({
+      roomId: input.roomId.toLowerCase(),
+      instructorId: input.instructorId.toLowerCase(),
+      guardaId: input.guardaId.toLowerCase(),
+      numeroPc: input.numeroPc
+    });
+  }
+
+  public async getLoans(filters: LoanFilters = {}): Promise&lt;Loan[]&gt; {
+    if (filters.roomId !== undefined &amp;&amp; !this.isUuid(filters.roomId)) {
+      throw new DomainError(
+        'VALIDATION_ERROR',
+        'El filtro roomId debe ser un UUID válido.'
+      );
+    }
+    return this.loanRepository.findAll({
+      roomId: filters.roomId?.toLowerCase()
+    });
+  }
+
+  public async getLoanDetail(id: number): Promise&lt;Loan&gt; {
+    this.validateId(id);
+    const loan = await this.loanRepository.findById(id);
+    if (!loan) {
+      throw new DomainError(
+        'NOT_FOUND',
+        `No existe un préstamo con identificador ${id}.`
+      );
+    }
+    return loan;
+  }
+
+  public async acceptLoan(id: number): Promise&lt;Loan&gt; {
+    this.validateId(id);
+    const updatedLoan = await this.loanRepository.updateStatus(
+      id,
+      'PENDIENTE_APROBACION',
+      'APROBADO_Y_FIRMADO'
+    );
+    if (updatedLoan) {
+      return updatedLoan;
+    }
+
+    const currentLoan = await this.loanRepository.findById(id);
+    if (!currentLoan) {
+      throw new DomainError(
+        'NOT_FOUND',
+        `No existe un préstamo con identificador ${id}.`
+      );
+    }
+    throw new DomainError(
+      'CONFLICT',
+      'El préstamo ya fue aceptado y no puede aceptarse nuevamente.'
+    );
+  }
+
+  private validateId(id: number): void {
+    if (!Number.isInteger(id) || id &lt;= 0) {
+      throw new DomainError(
+        'VALIDATION_ERROR',
+        'El identificador del préstamo debe ser un entero positivo.'
+      );
+    }
+  }
+
+  private isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+  }
+}</pre>
+                        </details>
+
+                        <details class="border border-slate-200 rounded-xl">
+                            <summary class="cursor-pointer p-4 font-sans font-bold text-sm">5. Crear src/container.ts — conectar implementaciones</summary>
+                            <pre class="bg-slate-950 text-amber-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { InMemoryLoanRepository } from './repositories/in-memory-loan.repository';
+import { LoanService } from './services/loan.service';
+
+const loanRepository = new InMemoryLoanRepository();
+export const loanService = new LoanService(loanRepository);</pre>
+                            <p class="font-sans p-4 text-[11px] text-slate-600"><strong>En palabras:</strong> crea el repositorio JSON concreto, lo inyecta en el servicio y exporta el servicio para que el controller lo reutilice. El módulo <code>container.ts</code> se carga una vez al iniciar; el archivo conserva los préstamos al reiniciar. Al agregar usuarios, ambientes o inventario, se repite este patrón con las clases reales de cada módulo. Consulta el Paso 6 para ver el flujo, qué no debe ir aquí y cómo se cambiaría luego a PostgreSQL.</p>
+                        </details>
+
+                        <details open class="border border-slate-200 rounded-xl">
+                            <summary class="cursor-pointer p-4 font-sans font-bold text-sm">6. Reemplazar src/controllers/loan.controller.ts — imports y endpoints completos</summary>
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { Request, Response } from 'express';
+import { loanService } from '../container';
+import { DomainError } from '../errors/domain.error';
+import { ICreateLoanDTO } from '../dtos/loan.dto';
+
+export class LoanController {
+  public static createLoan = async (
+    req: Request&lt;Record&lt;string, string&gt;, unknown, ICreateLoanDTO&gt;,
+    res: Response
+  ): Promise&lt;void&gt; =&gt; {
+    const loan = await loanService.createLoan(req.body);
+    res.status(201).json({ success: true, data: loan });
+  };
+
+  public static getLoansByFilter = async (
+    req: Request,
+    res: Response
+  ): Promise&lt;void&gt; =&gt; {
+    const { roomId } = req.query;
+    if (roomId !== undefined &amp;&amp; typeof roomId !== 'string') {
+      throw new DomainError(
+        'VALIDATION_ERROR',
+        'El filtro roomId debe ser un texto.'
+      );
+    }
+
+    const loans = await loanService.getLoans({ roomId });
+    res.status(200).json({ success: true, data: loans });
+  };
+
+  public static getLoanById = async (
+    req: Request&lt;{ id: string }&gt;,
+    res: Response
+  ): Promise&lt;void&gt; =&gt; {
+    const loan = await loanService.getLoanDetail(Number(req.params.id));
+    res.status(200).json({ success: true, data: loan });
+  };
+
+  public static acceptLoanInventory = async (
+    req: Request&lt;{ id: string }&gt;,
+    res: Response
+  ): Promise&lt;void&gt; =&gt; {
+    const loan = await loanService.acceptLoan(Number(req.params.id));
+    res.status(200).json({ success: true, data: loan });
+  };
+}</pre>
+                        </details>
+
+                        <details class="border border-slate-200 rounded-xl">
+                            <summary class="cursor-pointer p-4 font-sans font-bold text-sm">7. Reemplazar src/middlewares/errorHandler.middleware.ts — conservar el contrato de la Sesión 3</summary>
+                            <pre class="bg-slate-950 text-purple-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { Request, Response, NextFunction } from 'express';
+import { DomainError } from '../errors/domain.error';
+
+const domainErrorStatus: Record&lt;DomainError['code'], number&gt; = {
+  VALIDATION_ERROR: 400,
+  NOT_FOUND: 404,
+  CONFLICT: 409
+};
+
+export const globalErrorHandler = (
+  err: unknown,
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): void =&gt; {
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+
+  if (err instanceof DomainError) {
+    res.status(domainErrorStatus[err.code]).json({
+      success: false,
+      code: err.code,
+      error: err.message
+    });
+    return;
+  }
+
+  if (
+    typeof err === 'object' &amp;&amp;
+    err !== null &amp;&amp;
+    'type' in err &amp;&amp;
+    err.type === 'entity.parse.failed'
+  ) {
+    res.status(400).json({
+      success: false,
+      error: 'El cuerpo JSON está malformado.'
+    });
+    return;
+  }
+
+  console.error(err);
+  res.status(500).json({
+    status: 'error',
+    message: 'Error interno del servidor en ControlLabs',
+    timestamp: new Date().toISOString()
+  });
+};</pre>
+                        </details>
+
+                        <details class="border border-slate-200 rounded-xl">
+                            <summary class="cursor-pointer p-4 font-sans font-bold text-sm">8. Confirmar src/routes/loan.routes.ts — archivo completo</summary>
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { Router } from 'express';
+import { LoanController } from '../controllers/loan.controller';
+import { validateLoanPayload } from '../middlewares/validateLoan.middleware';
+
+const router = Router();
+
+router.post('/', validateLoanPayload, LoanController.createLoan);
+router.get('/search', LoanController.getLoansByFilter);
+router.get('/:id', LoanController.getLoanById);
+router.put('/:id/accept', LoanController.acceptLoanInventory);
+
+export default router;</pre>
+                            <p class="font-sans p-4 text-[11px] text-slate-600">Este archivo puede conservarse tal como está si coincide con el contenido anterior. El POST mantiene el middleware de DTO de la Sesión 3 delante del controlador.</p>
+                        </details>
+
+                        <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl font-sans text-xs text-emerald-950 space-y-2">
+                            <p class="font-bold">Compilar y ejecutar después de crear los archivos</p>
+                            <pre class="bg-slate-950 text-emerald-300 p-3 rounded-lg font-mono text-[11px]">npm run build
+npm run dev</pre>
+                            <p>Si TypeScript informa de un import o una ruta incorrectos, comprueba primero los nombres de archivo y que no hayas reemplazado el DTO o validador preexistentes. El repositorio usa un <code>Map</code> en memoria; sus préstamos desaparecen al reiniciar el proceso.</p>
+                        </div>
+                    </section>
+
+                    <section class="bg-white text-slate-800 p-5 md:p-7 rounded-2xl space-y-5">
+                        <div class="border-l-4 border-sena-green pl-4">
+                            <h4 class="font-sans font-bold text-xl">Taller paso a paso: de middleware a servicio y repositorio</h4>
+                            <p class="font-sans text-xs text-slate-600 mt-1">Crea los archivos en este orden. Cada paso añade una responsabilidad concreta y utiliza el contrato DTO ya trabajado en la Sesión 3.</p>
+                        </div>
+
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                            <p class="font-sans font-bold text-xs mb-2">Antes de empezar: identifica las capas que ya existen</p>
+                            <pre class="text-[11px] leading-relaxed overflow-x-auto">src/
+  dtos/loan.dto.ts                       existente: contrato de entrada
+  middlewares/validateLoan.middleware.ts existente: valida el body HTTP
+  controllers/loan.controller.ts         existente: adapta HTTP
+  routes/loan.routes.ts                  existente: conecta middleware y controller
+  errors/                                 crear: errores reconocibles por la app
+  repositories/                           crear: contrato y adaptador de datos
+  services/                               crear: reglas y casos de uso
+  container.ts                            crear: composición de dependencias</pre>
+                            <p class="font-sans text-[11px] text-slate-600 mt-2">No se mueve la validación del body de la Sesión 3 al servicio. Se reutiliza como puerta de entrada y se conectan las capas que faltaban.</p>
+                        </div>
+
+                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 1.</span> Definir el error de aplicación/dominio</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/errors/domain.error.ts</code> — crea este archivo primero. El servicio debe poder expresar “no existe” o “estado incompatible” sin importar <code>Response</code>, códigos HTTP ni Express. El error lleva un código estable; el middleware global decide después qué HTTP enviar.</p>
+                            <pre class="bg-slate-950 text-purple-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">export type DomainErrorCode = 'VALIDATION_ERROR' | 'NOT_FOUND' | 'CONFLICT';
+
+export class DomainError extends Error {
+  constructor(
+    public readonly code: DomainErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = 'DomainError';
+  }
+}</pre>
+                            <p class="font-sans text-[11px] text-slate-600"><code>VALIDATION_ERROR</code> representa una regla de entrada/aplicación incumplida; <code>NOT_FOUND</code>, una entidad que no existe; <code>CONFLICT</code>, una operación válida en forma pero imposible para el estado actual. No es un error de base de datos ni una respuesta HTTP por sí mismo.</p>
+                        </article>
+
+                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 2.</span> Crear el contrato del repositorio</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/repositories/loan.repository.ts</code> — define qué operaciones necesita el servicio, sin decidir si los datos viven en memoria o PostgreSQL. Importa el DTO existente y declara el modelo que las operaciones retornan.</p>
+                            <ul class="font-sans text-[11px] text-slate-600 list-disc list-inside space-y-1">
+                                <li><code>Loan</code> representa un préstamo ya creado, incluyendo id, estado y marcas de tiempo.</li>
+                                <li><code>LoanStatus</code> limita estados a los valores admitidos: evita actualizar con cualquier texto arbitrario.</li>
+                                <li><code>findById</code> devuelve <code>null</code> cuando no existe: la ausencia es un resultado esperado, no un fallo inesperado.</li>
+                                <li><code>expectedStatus</code> en <code>updateStatus</code> hace una actualización condicional: solo acepta si todavía está pendiente.</li>
+                            </ul>
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">export interface LoanRepository {
+  create(input: ICreateLoanDTO): Promise&lt;Loan&gt;;
+  findAll(filters?: LoanFilters): Promise&lt;Loan[]&gt;;
+  findById(id: number): Promise&lt;Loan | null&gt;;
+  updateStatus(
+    id: number,
+    expectedStatus: LoanStatus,
+    status: LoanStatus
+  ): Promise&lt;Loan | null&gt;;
+}</pre>
+                            <p class="font-sans text-[11px] text-slate-600">El contrato hace posible cambiar el adaptador concreto sin reescribir los casos de uso. La interfaz no abre una conexión ni guarda datos por sí sola.</p>
+                        </article>
+
+                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 3.</span> Implementar persistencia temporal en memoria</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/repositories/in-memory-loan.repository.ts</code> — implementa el contrato del paso anterior con un <code>Map</code>. Los registros viven solo durante el proceso Node.js y se borran al reiniciar. Esto permite practicar el flujo sin configurar JSON ni PostgreSQL.</p>
+                            <div class="bg-slate-950 text-emerald-300 p-4 rounded-xl font-mono text-[11px] leading-relaxed">POST /loans → servicio → InMemoryLoanRepository.create
+                                 → asigna id y estado en el Map del proceso
+                                 → devuelve el préstamo creado</div>
+                            <p class="font-sans text-[11px] text-slate-600">El adaptador no valida claves foráneas ni persiste los datos. Cuando el proyecto requiera conservar información entre reinicios, se reemplazará por otro adaptador que implemente el mismo contrato.</p>
+                        </article>
+
+                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 4.</span> Crear el servicio y sus casos de uso</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/services/loan.service.ts</code> — aquí se implementan acciones de negocio. El constructor recibe <em>la interfaz</em> <code>LoanRepository</code>; no conoce Express ni crea internamente la base de datos. Cada método coordina su regla y delega la lectura/escritura al repositorio. Usa el archivo completo con imports del panel anterior; este fragmento destaca las reglas de creación.</p>
+                            <pre class="bg-slate-950 text-sky-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">constructor(private readonly loanRepository: LoanRepository) {}
+
+async createLoan(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
+  if (!Number.isInteger(input.numeroPc) || input.numeroPc &lt;= 0) {
+    throw new DomainError(
+      'VALIDATION_ERROR',
+      'El número de PCs debe ser un entero positivo.'
+    );
+  }
+  return this.loanRepository.create({
+    roomId: input.roomId.toLowerCase(),
+    instructorId: input.instructorId.toLowerCase(),
+    guardaId: input.guardaId.toLowerCase(),
+    numeroPc: input.numeroPc
+  });
+}
+
+async getLoanDetail(id: number): Promise&lt;Loan&gt; {
+  this.validateId(id);
+  const loan = await this.loanRepository.findById(id);
+  if (!loan) {
+    throw new DomainError('NOT_FOUND', `No existe un préstamo con identificador ${id}.`);
+  }
+  return loan;
+}</pre>
+                            <p class="font-sans text-[11px] text-slate-600"><strong>Qué hace cada parte:</strong> el constructor recibe el repositorio, lo que permite sustituirlo sin cambiar el servicio. <code>createLoan</code> valida cantidad positiva, normaliza los UUID de las referencias y delega la persistencia. <code>getLoanDetail</code> rechaza ids no enteros/positivos mediante <code>validateId</code>, busca por id y traduce <code>null</code> a <code>NOT_FOUND</code>. El <code>throw</code> detiene el caso de uso; no construye una respuesta HTTP.</p>
+                            <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg font-sans text-[11px] text-amber-950 space-y-1">
+                                <p><strong>Separación con el middleware:</strong> <code>validateLoanPayload</code> valida la forma y el formato UUID del JSON. El servicio aplica la regla del caso de uso: cantidad positiva. Además, valida que el filtro de búsqueda sea un UUID válido.</p>
+                                <p><strong>Límite actual:</strong> las reglas de existencia de FK requieren repositorios de ambientes y usuarios; el JSON solo persiste préstamos y no valida esas referencias. El modelo ya no representa activos individuales prestados.</p>
+                            </div>
+                            <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-lg font-sans text-[11px] text-emerald-950 space-y-2">
+                                <p class="font-bold">Reglas de creación que sí ejecuta el servicio hoy</p>
+                                <ol class="list-decimal list-inside space-y-1">
+                                    <li>Rechaza número de PCs no entero o no positivo.</li>
+                                    <li>Normaliza los UUID de ambiente y personas a minúsculas antes de guardar.</li>
+                                    <li>Si las reglas pasan, llama al repositorio; este crea el id, inicia el estado pendiente y fija las fechas.</li>
+                                </ol>
+                                <p><strong>Límite de alcance:</strong> el DTO lleva roomId, instructorId, guardaId y numeroPc. El repositorio JSON solo persiste préstamos y no hay repositorios de ambientes/usuarios para verificar existencia y estado. Sin asociación de equipos, no se puede saber qué activos se entregaron o recibieron.</p>
+                            </div>
+                        </article>
+
+                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 5.</span> Comprender la aceptación como transición de estado</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>LoanService.acceptLoan</code> primero valida el identificador con <code>validateId</code> y pide al repositorio cambiar el estado únicamente si el valor actual sigue siendo <code>PENDIENTE_APROBACION</code>. Si no se actualizó, consulta el registro para distinguir dos situaciones: inexistente (<code>404</code>) o ya aceptado/incompatible (<code>409</code>).</p>
+                            <pre class="bg-slate-950 text-sky-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">const updated = await repository.updateStatus(
+  id,
+  'PENDIENTE_APROBACION',
+  'APROBADO_Y_FIRMADO'
+);
+if (updated) return updated;
+
+const current = await repository.findById(id);
+if (!current) throw new DomainError('NOT_FOUND', 'No existe.');
+throw new DomainError('CONFLICT', 'Ya fue aceptado.');</pre>
+                            <p class="font-sans text-[11px] text-slate-600">La condición de estado evita que dos solicitudes concurrentes del mismo proceso acepten dos veces el mismo préstamo. El repositorio JSON serializa las operaciones de esta instancia; una base PostgreSQL deberá hacer esa condición dentro de un <code>UPDATE ... WHERE estado = ...</code> atómico y coordinar varias instancias.</p>
+                            <div class="bg-sky-50 border border-sky-200 p-3 rounded-lg font-sans text-[11px] text-sky-950 space-y-1">
+                                <p><strong>Reglas aplicadas ahora:</strong> id entero positivo; el préstamo debe existir; transición única de pendiente a aceptado; se registra <code>acceptedAt</code>; si ya no está pendiente, se devuelve <code>409 CONFLICT</code>.</p>
+                                <p><strong>Falta para la regla de autorización:</strong> guardar quién aceptó y comprobar que el actor sea el instructor autorizado. El endpoint actual no tiene autenticación; no debe aceptar un <code>instructorId</code> enviado libremente en el body como prueba de identidad. Esa regla se implementa cuando exista identidad verificada y se pase al caso de uso desde el contexto autenticado.</p>
+                            </div>
+                        </article>
+
+                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 6.</span> Conectar las dependencias en un solo lugar</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/container.ts</code> es el <strong>punto de composición</strong> (también llamado composition root): el lugar que decide qué implementaciones concretas usa la aplicación y conecta sus dependencias. No es un contenedor de datos, no guarda préstamos y no contiene reglas de negocio. Hoy elige memoria; mañana podrá elegir PostgreSQL.</p>
+                            <pre class="bg-slate-950 text-amber-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">import { LoanService } from './services/loan.service';
+import { InMemoryLoanRepository } from './repositories/in-memory-loan.repository';
+
+const loanRepository = new InMemoryLoanRepository();
+export const loanService = new LoanService(loanRepository);</pre>
+                            <div class="bg-sky-50 border border-sky-200 p-3 rounded-lg font-sans text-[11px] text-sky-950 space-y-2">
+                                <p><strong>Lee la conexión de derecha a izquierda:</strong> <code>InMemoryLoanRepository</code> implementa el contrato <code>LoanRepository</code>; el servicio recibe ese repositorio por su constructor; el controller importa el <code>loanService</code> ya construido. El controller no crea repositorios ni decide dónde se persiste.</p>
+                                <p><strong>¿Por qué se crea una sola vez?</strong> El módulo se carga al iniciar y todas las peticiones comparten la instancia y su <code>Map</code>. Si se creara un repositorio nuevo por petición, cada una vería datos distintos. Al reiniciar el proceso, el Map vuelve a empezar vacío.</p>
+                            </div>
+                            <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-lg font-sans text-[11px] text-emerald-950 space-y-2">
+                                <p class="font-bold">¿Qué hago cuando agregue los demás módulos?</p>
+                                <ol class="list-decimal list-inside space-y-1">
+                                    <li>Crear los componentes del módulo (DTO/validador, contrato de repositorio, adaptador, servicio, controller y rutas) según la operación que necesite.</li>
+                                    <li>En <code>container.ts</code>, importar e instanciar el adaptador de ese módulo y pasarlo al constructor de su servicio.</li>
+                                    <li>Exportar el servicio construido para que su controller lo use, igual que hace hoy <code>LoanController</code> con <code>loanService</code>.</li>
+                                    <li>Montar las rutas del módulo en el router de la API. El container no registra rutas.</li>
+                                </ol>
+                                <pre class="bg-emerald-950 text-emerald-100 p-3 rounded-lg overflow-x-auto">const loanRepository = new InMemoryLoanRepository();
+export const loanService = new LoanService(loanRepository);
+
+const roomRepository = new InMemoryRoomRepository();
+export const roomService = new RoomService(roomRepository);
+
+const equipmentRepository = new InMemoryEquipmentRepository();
+export const equipmentService = new EquipmentService(equipmentRepository);</pre>
+                                <p>El fragmento de usuarios/ambientes/equipos ilustra el patrón para el futuro; crea esos nombres solo cuando existan sus clases reales. No se crea un container por ruta ni uno por cada petición. Si más adelante hay muchas dependencias, se pueden agrupar por módulo (por ejemplo <code>loan.container.ts</code> y <code>equipment.container.ts</code>); no hace falta anticiparlo ahora.</p>
+                            </div>
+                            <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg font-sans text-[11px] text-amber-950 space-y-2">
+                                <p><strong>¿Y al cambiar a PostgreSQL?</strong> Se crea un adaptador <code>PostgresLoanRepository</code> que implementa el mismo contrato. En este archivo se cambia la construcción de <code>InMemoryLoanRepository</code> por la construcción del adaptador PostgreSQL y se le entrega la conexión compartida. <code>LoanService</code> y <code>LoanController</code> siguen dependiendo de sus contratos, no del driver SQL.</p>
+                                <pre class="bg-amber-950 text-amber-100 p-3 rounded-lg overflow-x-auto">const loanRepository = new PostgresLoanRepository(database);
+export const loanService = new LoanService(loanRepository);</pre>
+                                <p>La regla para decidir qué instancia crear vive aquí; las reglas de préstamo viven en <code>LoanService</code>; las consultas y escrituras viven en el repositorio; las respuestas HTTP viven en el controller. Esa separación es el objetivo.</p>
+                            </div>
+                        </article>
+
+                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 7.</span> Hacer que el controlador delegue al servicio</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/controllers/loan.controller.ts</code> — recibe los valores de Express, llama al caso de uso y transforma el resultado en HTTP. Para crear, retorna <code>201 Created</code>; para consultar o aceptar, <code>200 OK</code>. El controlador no implementa reglas de inventario ni consulta directamente el repositorio.</p>
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">public static createLoan = async (
+  req: Request&lt;Record&lt;string, string&gt;, unknown, ICreateLoanDTO&gt;,
+  res: Response
+): Promise&lt;void&gt; =&gt; {
+  const loan = await loanService.createLoan(req.body);
+  res.status(201).json({ success: true, data: loan });
+};</pre>
+                            <p class="font-sans text-[11px] text-slate-600">El handler es <code>async</code> porque el servicio/repository devuelven promesas. Express 5 deriva automáticamente un rechazo no capturado al middleware global. No se debe capturar el error y silenciarlo. En <code>getLoansByFilter</code> todavía hay una comprobación del query <code>aula</code> en el controller: es validación de transporte, no regla del servicio; al generalizarla, muévela a un middleware de query para dejar la frontera HTTP homogénea.</p>
+                        </article>
+
+                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 8.</span> Conectar router y mantener la validación de la Sesión 3</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/routes/loan.routes.ts</code> ya define la secuencia del POST. El validador corre antes del controlador; si responde <code>400</code>, el caso de uso no se ejecuta. Las demás rutas delegan al controlador correspondiente.</p>
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">router.post('/', validateLoanPayload, LoanController.createLoan);
+router.get('/search', LoanController.getLoansByFilter);
+router.get('/:id', LoanController.getLoanById);
+router.put('/:id/accept', LoanController.acceptLoanInventory);</pre>
+                            <p class="font-sans text-[11px] text-slate-600">El orden también evita que el parámetro <code>/:id</code> capture por error la ruta literal <code>/search</code>.</p>
+                        </article>
+
+                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 9.</span> Traducir errores al protocolo HTTP en un único punto</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/middlewares/errorHandler.middleware.ts</code> — reconoce <code>DomainError</code> y mapea sus códigos a HTTP: <code>VALIDATION_ERROR → 400</code>, <code>NOT_FOUND → 404</code>, <code>CONFLICT → 409</code>. El servicio no necesita conocer esos números.</p>
+                            <ul class="font-sans text-[11px] text-slate-600 list-disc list-inside space-y-1">
+                                <li>JSON malformado sigue respondiendo <code>400</code> (error del parser, no del servicio).</li>
+                                <li>Errores desconocidos se registran internamente y responden <code>500</code> genérico.</li>
+                                <li>Si <code>res.headersSent</code>, se delega con <code>next(err)</code> porque ya no es seguro enviar otra respuesta.</li>
+                            </ul>
+                            <p class="font-sans text-xs text-slate-600"><code>src/app.ts</code> conecta el pipeline: parser/logger y rutas, luego 404 y por último el manejador global. La ruta <code>/__test/error</code> es solo de desarrollo y sirve para comprobar el 500.</p>
+                        </article>
+
+                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 10.</span> Compilar y probar el flujo</h5>
+                            <p class="font-sans text-xs text-slate-600">Desde la terminal integrada de VS Code, ejecuta primero la compilación y luego levanta el servidor:</p>
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">npm run build
+npm run dev</pre>
+                            <p class="font-sans text-xs text-slate-600">Envía desde Postman/Thunder Client o una terminal estas peticiones y comprueba tanto el status como el JSON:</p>
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">POST http://localhost:5000/api/v1/loans
+{
+  "roomId": "d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44",
+  "instructorId": "c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33",
+  "guardaId": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22",
+  "numeroPc": 1
+}
+Esperado: 201 y data.id
+
+GET  http://localhost:5000/api/v1/loans/search?roomId=d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44 → 200
+GET  http://localhost:5000/api/v1/loans/999 → 404 NOT_FOUND
+PUT  http://localhost:5000/api/v1/loans/1/accept → 200
+PUT  http://localhost:5000/api/v1/loans/1/accept → 409 CONFLICT</pre>
+                            <p class="font-sans text-[11px] text-slate-600">Los UUID deben tener formato válido; el repositorio en memoria no comprueba que existan en las tablas. Usa el id que realmente devolvió el POST en las pruebas PUT. Reiniciar el servidor borra los préstamos.</p>
+                        </article>
+
+                        <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl font-sans space-y-2">
+                            <h5 class="font-bold text-sm text-emerald-950">Recorrido completo de un POST válido</h5>
+                            <ol class="list-decimal list-inside text-[11px] text-emerald-950 space-y-1">
+                                <li>El cliente envía JSON a <code>POST /api/v1/loans</code>.</li>
+                                <li><code>requestLogger</code> registra la petición; <code>express.json()</code> convierte JSON válido en <code>req.body</code>.</li>
+                                <li><code>validateLoanPayload</code> comprueba el contrato del DTO. Si falla, contesta 400 y el flujo termina.</li>
+                                <li><code>LoanController</code> toma el body y llama a <code>loanService.createLoan</code>.</li>
+                                <li><code>LoanService</code> aplica la regla de negocio y pide la creación al contrato <code>LoanRepository</code>.</li>
+                                <li><code>InMemoryLoanRepository</code> genera id/estado/fechas y devuelve el préstamo.</li>
+                                <li>El controller responde 201 con el recurso creado.</li>
+                            </ol>
+                        </div>
+
+                        <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl font-sans space-y-2">
+                            <h5 class="font-bold text-sm text-amber-950">Reglas del préstamo: implementadas ahora y siguiente iteración</h5>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-[11px] border-collapse">
+                                    <thead><tr class="border-b border-amber-300"><th class="p-2">Regla</th><th class="p-2">Dónde se aplica</th><th class="p-2">Estado</th></tr></thead>
+                                    <tbody class="text-amber-950">
+                                        <tr class="border-b border-amber-200"><td class="p-2">Payload tiene los campos y tipos esperados</td><td class="p-2">validateLoanPayload</td><td class="p-2">Implementada; 400 si falla</td></tr>
+                                        <tr class="border-b border-amber-200"><td class="p-2">Cantidad de computadores positiva</td><td class="p-2">LoanService.createLoan</td><td class="p-2">Implementada; DomainError 400</td></tr>
+                                        <tr class="border-b border-amber-200"><td class="p-2">Nuevo préstamo inicia pendiente</td><td class="p-2">LoanRepository.create</td><td class="p-2">Implementada</td></tr>
+                                        <tr class="border-b border-amber-200"><td class="p-2">Aceptar solo una vez desde pendiente</td><td class="p-2">Service + updateStatus condicional</td><td class="p-2">Implementada; 409 en conflicto</td></tr>
+                                        <tr class="border-b border-amber-200"><td class="p-2">Ambiente/personas existen y están activos</td><td class="p-2">Service + repositorios de catálogos</td><td class="p-2">Pendiente: no existen esos adaptadores</td></tr>
+                                        <tr class="border-b border-amber-200"><td class="p-2">Trazabilidad de activos entregados y devueltos</td><td class="p-2">Requiere asociación préstamo-equipo</td><td class="p-2">Fuera del esquema actual</td></tr>
+                                        <tr><td class="p-2">Registrar y autorizar a quien acepta</td><td class="p-2">Identidad autenticada + servicio</td><td class="p-2">Pendiente: autenticación no implementada</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-[11px] text-amber-950">La cantidad solicitada se registra, pero no se vincula a equipos específicos. Para controlar disponibilidad y devolución por activo, el modelo de datos tendrá que incorporar nuevamente una relación o definir otra solución de trazabilidad.</p>
+                        </div>
+                    </section>
+
+                    <span class="text-amber-400 font-bold block">Referencia del contrato: src/repositories/loan.repository.ts</span>
+                    <pre class="bg-slate-950 text-emerald-300 p-5 rounded-2xl overflow-x-auto text-[11px] leading-relaxed">import { ICreateLoanDTO } from '../dtos/loan.dto';
+
+export type LoanStatus = 'PENDIENTE_APROBACION' | 'APROBADO_Y_FIRMADO';
+
+export interface Loan extends ICreateLoanDTO {
+  id: number;
+  estado: LoanStatus;
+  createdAt: string;
+  acceptedAt: string | null;
+}
+
+export interface LoanRepository {
+  create(input: ICreateLoanDTO): Promise&lt;Loan&gt;;
+  findAll(filters?: { roomId?: string }): Promise&lt;Loan[]&gt;;
+  findById(id: number): Promise&lt;Loan | null&gt;;
+  updateStatus(id: number, expectedStatus: LoanStatus, status: LoanStatus): Promise&lt;Loan | null&gt;;
+}</pre>
+
+                    <span class="text-amber-400 font-bold block pt-4">Referencia del caso de uso: src/services/loan.service.ts</span>
+                    <pre class="bg-slate-950 text-sky-300 p-5 rounded-2xl overflow-x-auto text-[11px] leading-relaxed">public async createLoan(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
+                      if (!Number.isInteger(input.numeroPc) || input.numeroPc &lt;= 0) {
+                        throw new DomainError('VALIDATION_ERROR', 'El número de PCs debe ser positivo.');
+                      }
+                      return this.loanRepository.create({
+                        roomId: input.roomId.toLowerCase(),
+                        instructorId: input.instructorId.toLowerCase(),
+                        guardaId: input.guardaId.toLowerCase(),
+                        numeroPc: input.numeroPc
+                      });
+}
+
+public async acceptLoan(id: number): Promise&lt;Loan&gt; {
+  const updated = await this.loanRepository.updateStatus(
+    id, 'PENDIENTE_APROBACION', 'APROBADO_Y_FIRMADO'
+  );
+  if (updated) return updated;
+  const current = await this.loanRepository.findById(id);
+  if (!current) throw new DomainError('NOT_FOUND', 'No existe el préstamo.');
+  throw new DomainError('CONFLICT', 'El préstamo ya fue aceptado.');
+}</pre>
+
+                    <span class="text-amber-400 font-bold block pt-4">Referencia HTTP — controller → service → repositorio</span>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <pre class="bg-slate-950 text-emerald-300 p-5 rounded-2xl overflow-x-auto text-[11px] leading-relaxed">// Controller async (Express 5)
+const loan = await loanService.createLoan(req.body);
+res.status(201).json({ success: true, data: loan });
+
+// Reglas conocidas: DomainError
+VALIDATION_ERROR → 400
+NOT_FOUND        → 404
+CONFLICT         → 409</pre>
+                        <pre class="bg-slate-950 text-purple-300 p-5 rounded-2xl overflow-x-auto text-[11px] leading-relaxed">// Middleware global
+if (err instanceof DomainError) {
+  res.status(domainErrorStatus[err.code]).json({
+    success: false, code: err.code, error: err.message
+  });
+  return;
+}
+// JSON malformado sigue siendo 400;
+// cualquier error inesperado: log interno y 500 genérico.</pre>
+                    </div>
+                    <div class="bg-emerald-950/60 p-4 rounded-xl text-[11px] text-emerald-100 space-y-2">
+                        <p><strong>Conexión con la Sesión 3:</strong> el validador de payload conserva su respuesta directa <code>400</code>; los fallos del servicio se lanzan como errores de dominio y Express 5 deriva automáticamente el rechazo del handler async al <code>globalErrorHandler</code>. No se atrapa el error para ocultarlo ni se convierte cualquier fallo en un <code>404</code>.</p>
+                        <p><strong>Rutas de la API actual:</strong> crear préstamo → <code>201</code>; búsqueda/detalle/aceptación → <code>200</code>; identificador inválido → <code>400</code>; inexistente → <code>404</code>; doble aceptación → <code>409</code>; fallo inesperado → <code>500</code>. La ruta de prueba de error solo se registra fuera de producción y antes del 404. La aceptación todavía no implementa autenticación/autorización; no debe considerarse lista para producción hasta protegerla con una identidad verificada como indica la Sesión 3.</p>
+                    </div>
+                    <div class="bg-amber-950/50 p-4 rounded-xl text-[11px] text-amber-100 space-y-2">
+                        <p><strong>Composición actual:</strong> <code>src/container.ts</code> inyecta <code>InMemoryLoanRepository</code> en el servicio. Los préstamos existen solo mientras el proceso siga activo.</p>
+                        <p><strong>Persistencia futura:</strong> se agrega un adaptador PostgreSQL que implemente <code>LoanRepository</code> y se cambia la composición; ni el controlador ni las reglas del servicio necesitan importar el driver SQL.</p>
+                    </div>
+                    <div class="bg-white text-slate-800 p-5 rounded-2xl space-y-3">
+                        <h4 class="font-sans font-bold text-sm">Práctica: verificar que cada capa cumple su responsabilidad</h4>
+                        <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">POST /api/v1/loans
+{ "roomId": "d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44",
+  "instructorId": "c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33",
+  "guardaId": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22",
+  "numeroPc": 1 }
+→ 201; luego GET /api/v1/loans/search?roomId=d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44 → 200
+
+POST /api/v1/loans con numeroPc: 0 → 400 VALIDATION_ERROR
+GET /api/v1/loans/99999 → 404 NOT_FOUND
+PUT /api/v1/loans/1/accept dos veces → 200 y después 409 CONFLICT
+Cuerpo JSON malformado → 400; GET /__test/error (desarrollo) → 500</pre>
+                        <p class="font-sans text-[11px] text-slate-600">Confirma también que una petición inválida no crea un registro y que el logger de la Sesión 3 se ejecuta antes del validador. Reinicia el servidor y comprueba que el almacenamiento en memoria comienza vacío.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer SENA -->
+    <footer class="bg-sena-dark text-white border-t-2 border-sena-green py-6 text-center text-xs text-slate-400 space-y-1">
+        <p class="font-bold text-slate-200">SERVICIO NACIONAL DE APRENDIZAJE - SENA</p>
+        <p>Análisis y Desarrollo de Software (ADSO) • ControlLabs • Capa de Servicios & Modelo Relacional (5 Módulos)</p>
+    </footer>
+
+    <!-- Script de Interactividad -->
+    <script>
+        function switchTab(tab) {
+            ['services', 'db', 'roadmap', 'code'].forEach(t => {
+                const sec = document.getElementById(`section-${t}`);
+                const btn = document.getElementById(`btn-tab-${t}`);
+                if (sec) sec.classList.add('hidden');
+                if (btn) btn.className = "text-slate-300 hover:text-white px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5";
+            });
+            const targetSec = document.getElementById(`section-${tab}`);
+            const targetBtn = document.getElementById(`btn-tab-${tab}`);
+            if (targetSec) targetSec.classList.remove('hidden');
+            if (targetBtn) targetBtn.className = "tab-btn active px-3 py-1.5 rounded-lg transition-all font-bold flex items-center gap-1.5";
+        }
+
+        function switchModule(mod) {
+            ['users', 'rooms', 'equipment', 'incidents', 'dashboard'].forEach(m => {
+                const el = document.getElementById(`mod-view-${m}`);
+                const btn = document.getElementById(`mod-tab-${m}`);
+                if (el) el.classList.add('hidden');
+                if (btn) btn.className = "sub-tab px-4 py-2 rounded-xl text-slate-600 hover:text-slate-900 transition-all";
+            });
+            const targetEl = document.getElementById(`mod-view-${mod}`);
+            const targetBtn = document.getElementById(`mod-tab-${mod}`);
+            if (targetEl) targetEl.classList.remove('hidden');
+            if (targetBtn) targetBtn.className = "sub-tab active px-4 py-2 rounded-xl transition-all";
+        }
+
+        function simulateServiceAction(action) {
+            const out = document.getElementById('service-output');
+            const scenarios = {
+                create: {
+                    http: 201,
+                    pipeline: ["requestLogger", "validateLoanPayload → next()", "LoanController.createLoan", "LoanService.createLoan", "InMemoryLoanRepository.create"],
+                    result: { success: true, data: { id: 1, roomId: "d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44", instructorId: "c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33", guardaId: "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22", numeroPc: 1, estado: "PENDIENTE_APROBACION" } }
+                },
+                rule: {
+                    http: 400,
+                    pipeline: ["requestLogger", "validateLoanPayload → next()", "LoanController.createLoan", "LoanService.createLoan → DomainError(VALIDATION_ERROR)", "globalErrorHandler"],
+                    result: { success: false, code: "VALIDATION_ERROR", error: "El número de PCs debe ser positivo." }
+                },
+                missing: {
+                    http: 404,
+                    pipeline: ["requestLogger", "LoanController.getLoanById", "LoanService.getLoanDetail", "DomainError(NOT_FOUND)", "globalErrorHandler"],
+                    result: { success: false, code: "NOT_FOUND", error: "No existe un préstamo con identificador 999." }
+                }
+            };
+            const scenario = scenarios[action] || scenarios.create;
+            out.textContent = JSON.stringify({
+                simulated: true,
+                note: "Visualización didáctica; no envía una petición al backend.",
+                httpStatus: scenario.http,
+                pipeline: scenario.pipeline,
+                response: scenario.result
+            }, null, 2);
+            if (typeof confetti === 'function') confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
+        }
+    </script>
+</body>
+</html>

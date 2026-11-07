@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENA ADSO - Masterclass: Middlewares de Auditoría, Validación DTO y Manejo Global de Errores en ControlLabs</title>
+
+    <link rel="stylesheet" href="./controllabs-tailwind.css">
+    <style>
+        body { font-family: "Segoe UI", sans-serif; }
+        .font-mono { font-family: Consolas, "Courier New", monospace; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-sena-green selection:text-white">
+
+    <!-- Navbar Superior -->
+    <header class="bg-sena-dark text-white border-b-4 border-sena-green sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <svg class="h-9 w-9 text-sena-green fill-current" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#39A900" stroke-width="6"/>
+                    <path d="M50 20 L50 80 M20 50 L80 50" stroke="#39A900" stroke-width="6" stroke-linecap="round"/>
+                    <circle cx="50" cy="50" r="15" fill="#39A900"/>
+                </svg>
+                <div>
+                    <h1 class="text-md sm:text-lg font-bold tracking-tight">SENA <span class="text-sena-green font-extrabold">ADSO</span></h1>
+                    <p class="text-[10px] sm:text-xs text-slate-400">Sesión 3 • Middlewares, DTO y errores en ControlLabs</p>
+                </div>
+            </div>
+            <div class="hidden xl:flex space-x-3 text-xs font-medium">
+                <a href="#introduccion" class="hover:text-sena-green transition-colors py-2 text-sena-green font-bold">1. Analogía</a>
+                <a href="#anatomia-middleware" class="hover:text-sena-green transition-colors py-2 text-sky-400 font-bold">2. next()</a>
+                <a href="#interfaces-dto" class="hover:text-sena-green transition-colors py-2 text-amber-400 font-bold">3. Interfaces DTO</a>
+                <a href="#modulos-implementacion" class="hover:text-sena-green transition-colors py-2 text-purple-400 font-bold">4. ControlLabs</a>
+                <a href="#orden-app" class="hover:text-sena-green transition-colors py-2 text-emerald-400 font-bold">5. app.ts</a>
+            </div>
+            <div class="bg-sena-green text-white px-3 py-1 rounded-full text-xs font-bold tracking-wide shadow-sm">
+                Masterclass Sesión 3 Oficial
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Header -->
+    <section class="bg-gradient-to-br from-sena-dark via-slate-900 to-black text-white py-12 px-4 relative overflow-hidden">
+        <div class="absolute -right-10 -bottom-10 w-80 h-80 bg-sena-green opacity-10 rounded-full blur-3xl"></div>
+        <div class="max-w-5xl mx-auto text-center relative z-10 space-y-6">
+            <span class="inline-flex items-center gap-1.5 bg-sena-blue/20 text-sky-400 border border-sena-blue/30 text-xs font-extrabold uppercase px-3 py-1.5 rounded-full tracking-wider">
+                <span class="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span>
+                TypeScript + Express.js • Comprender, diseñar e implementar
+            </span>
+            <h2 class="text-3xl md:text-5xl font-black leading-tight tracking-tight">
+                Middlewares en ControlLabs: del propósito <br class="hidden md:block">
+                <span class="text-sena-green">a la implementación paso a paso</span>
+            </h2>
+            <p class="text-slate-300 text-sm md:text-base max-w-3xl mx-auto leading-relaxed">
+                Antes de escribir código, vamos a entender qué problema resuelve un middleware y cómo una petición avanza por Express. Después definiremos qué necesita ControlLabs, ordenaremos sus capas y empezaremos una implementación verificable, sin confundir el tipado de TypeScript con la validación de datos que llegan por HTTP.
+            </p>
+            <div class="pt-2 flex flex-wrap justify-center gap-4">
+                <a href="#introduccion" class="bg-sena-green hover:bg-emerald-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-sena-green/20 transition-all text-sm transform hover:-translate-y-0.5 flex items-center gap-2">
+                    🛡️ Entender el problema
+                </a>
+                <a href="#practica-vscode" class="bg-sena-blue hover:bg-sky-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg transition-all text-sm transform hover:-translate-y-0.5 flex items-center gap-2">
+                    💻 Ir a la actividad
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+
+        <!-- SECCIÓN 1: ANALOGÍA DEL GUARDA -->
+        <section id="introduccion" class="scroll-mt-20 space-y-8">
+            <div class="border-l-4 border-sena-green pl-4">
+                <h3 class="text-2xl font-bold text-sena-dark tracking-tight">1. ¿Qué es un Middleware en tu día a día? (La Analogía del Guarda del SENA)</h3>
+                <p class="text-slate-500 text-sm">Primero entendemos la necesidad: revisar una petición antes de que llegue a la lógica que registra el préstamo.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                    <span class="bg-sena-green text-white font-bold text-[10px] px-2.5 py-1 rounded-full uppercase">La necesidad antes del código</span>
+                    <h4 class="font-bold text-slate-800 text-sm">El filtro de entrada en la portería</h4>
+                    <p class="text-xs text-slate-600 leading-relaxed">Imagina que el controlador es el instructor dentro del ambiente de clase: recibe una solicitud y ejecuta la acción del sistema. Si cada solicitud llegara sin revisar, podrían guardarse préstamos incompletos o la aplicación tendría que repetir controles en varios controladores.</p>
+                    <p class="text-xs text-slate-600 leading-relaxed">El middleware es como el guarda que revisa antes de dejar pasar. Puede registrar quién llegó y a qué ruta, comprobar que estén los datos requeridos o detener una solicitud inválida. Si la revisión termina bien, llama a <code class="font-mono">next()</code> para continuar; si encuentra un problema, responde con un error y no deja avanzar esa petición.</p>
+                    <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200 text-emerald-900 text-[11px] space-y-2">
+                        <p><strong>Pregunta para el equipo:</strong> ¿Qué problemas aparecerían si ControlLabs guardara un préstamo sin verificar el aula, el número del equipo y quién lo recibe?</p>
+                        <p class="text-emerald-700">Antes de seguir, anoten una consecuencia para los datos y otra para la persona que usa el sistema.</p>
+                    </div>
+                </div>
+                <div class="lg:col-span-7 bg-slate-900 rounded-3xl p-6 md:p-8 text-white space-y-4 border border-slate-800 shadow-2xl">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <span class="text-xs font-mono text-emerald-400 font-bold">Recorrido de una petición</span>
+                        <span class="text-[10px] text-slate-400">POST /api/v1/loans</span>
+                    </div>
+                    <ol class="space-y-3 text-xs">
+                        <li class="bg-slate-800 p-3 rounded-xl"><strong class="text-sky-300">1. Cliente:</strong> envía los datos del préstamo.</li>
+                        <li class="bg-slate-800 p-3 rounded-xl"><strong class="text-amber-300">2. Logger:</strong> registra método, ruta y hora; luego llama a <code>next()</code>.</li>
+                        <li class="bg-slate-800 p-3 rounded-xl"><strong class="text-orange-300">3. Validador:</strong> comprueba los valores recibidos; si son inválidos responde <code>400</code>, si no, llama a <code>next()</code>.</li>
+                        <li class="bg-emerald-950/70 p-3 rounded-xl"><strong class="text-emerald-300">4. Ruta y controlador:</strong> reciben la petición validada. Cuando se agregue, el servicio aplicará reglas de negocio y coordinará el guardado.</li>
+                    </ol>
+                    <p class="text-[11px] text-slate-400">En este esqueleto el controlador aún responde <code>501</code>; el servicio y la persistencia no están implementados. El middleware no reemplaza al controlador: prepara, revisa o enruta la petición antes de que la lógica del módulo actúe.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 2: ANATOMÍA Y next() -->
+        <section id="anatomia-middleware" class="scroll-mt-20 space-y-8">
+            <div class="border-l-4 border-sky-500 pl-4">
+                <h3 class="text-2xl font-bold text-sena-dark tracking-tight">2. Anatomía de tu Middleware y el Poder de <code>next()</code></h3>
+                <p class="text-slate-500 text-sm">Una función middleware recibe la petición, la respuesta y la forma de continuar o transferir un error.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                    <h4 class="font-bold text-slate-800 text-sm">Los tres argumentos de un middleware estándar</h4>
+                    <ul class="text-xs text-slate-600 space-y-2 list-disc list-inside">
+                        <li><code class="font-mono">req</code> (<code class="font-mono">Request</code>): datos y metadatos de la petición.</li>
+                        <li><code class="font-mono">res</code> (<code class="font-mono">Response</code>): permite responder, por ejemplo con <code class="font-mono">res.status(400).json(...)</code>.</li>
+                        <li><code class="font-mono">next</code> (<code class="font-mono">NextFunction</code>): pasa el control a la siguiente capa; <code class="font-mono">next(error)</code> deriva el flujo al manejador de errores.</li>
+                    </ul>
+                    <div class="bg-sky-50 p-4 rounded-xl border border-sky-200 text-sky-900 text-[11px]">
+                        Una petición debe terminar con una respuesta o continuar. Si el middleware no hace ninguna de las dos cosas, el cliente queda esperando. Si ya enviaste una respuesta de error, no llames también a <code class="font-mono">next()</code>.
+                    </div>
+                </div>
+                <div class="bg-slate-900 rounded-3xl p-6 text-xs font-mono text-sky-300 space-y-3 border border-slate-800 shadow-xl">
+                    <div class="text-slate-400 text-[10px] pb-1 border-b border-slate-800">src/middlewares/logger.middleware.ts</div>
+                    <pre class="overflow-x-auto">import { Request, Response, NextFunction } from 'express';
+
+export const requestLogger = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void =&gt; {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${req.method} ${req.originalUrl}`);
+  next();
+};</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 3: INTERFACES DTO Y VALIDACIÓN -->
+        <section id="interfaces-dto" class="scroll-mt-20 space-y-8">
+            <div class="border-l-4 border-amber-500 pl-4">
+                <h3 class="text-2xl font-bold text-sena-dark tracking-tight">3. Interfaces de TypeScript para describir el DTO y validar la petición</h3>
+                <p class="text-slate-500 text-sm">El contrato ayuda al equipo a programar con una forma compartida; el middleware comprueba los datos reales recibidos.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                    <h4 class="font-bold text-slate-800 text-sm">Dos responsabilidades distintas</h4>
+                    <p class="text-xs text-slate-600 leading-relaxed">Una interfaz TypeScript como <code class="font-mono">ICreateLoanDTO</code> describe la forma esperada y ayuda durante el desarrollo. Como los tipos se eliminan al compilar, la interfaz no verifica por sí misma el JSON que llega por HTTP. Por eso el middleware debe hacer comprobaciones en tiempo de ejecución antes de que el controlador use esos valores.</p>
+                    <p class="text-xs text-slate-600 leading-relaxed">El DTO en un archivo compartido evita duplicar el contrato. En esta etapa lo usan el validador y, cuando se conecte, el controlador/servicio como tipo de entrada. La validación de valores sigue siendo responsabilidad del código que se ejecuta.</p>
+                    <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200/60 text-[11px] text-amber-900">Para esta práctica validaremos campos requeridos y tipos básicos. La autenticación y los permisos por rol se dejan para cuando el proyecto integre OAuth; no se simulará que un rol enviado en el body es confiable.</div>
+                    <div class="bg-sky-50 p-4 rounded-2xl border border-sky-200 text-[11px] text-sky-950">La validación del middleware comprueba el formato de entrada. Reglas de negocio como disponibilidad del equipo, existencia del aula o estado del préstamo pertenecen al servicio, que puede consultar repositorios. El servicio no debe recibir objetos <code class="font-mono">Request</code>/<code class="font-mono">Response</code> de Express.</div>
+                </div>
+                <div class="bg-slate-900 rounded-3xl p-6 text-xs font-mono text-amber-300 space-y-3 border border-slate-800 shadow-xl">
+                    <div class="text-slate-400 text-[10px] pb-1 border-b border-slate-800">src/dtos/loan.dto.ts</div>
+                    <pre class="overflow-x-auto">export interface ICreateLoanDTO {
+  aula: string;
+  numeroPC: number;
+  nombreGuardaEntrega: string;
+  instructorRecibe: string;
+}</pre>
+                    <div class="text-slate-400 text-[10px] pt-3 pb-1 border-t border-slate-800">Uso: describir el valor tras validarlo</div>
+                                        <pre class="overflow-x-auto">const body: unknown = req.body;
+
+if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    res.status(400).json({ success: false, error: 'El cuerpo debe ser un objeto.' });
+    return;
+}
+
+const loan = body as Record&lt;string, unknown&gt;;
+if (typeof loan.aula !== 'string' || loan.aula.trim() === '' ||
+        typeof loan.numeroPC !== 'number' || !Number.isInteger(loan.numeroPC) ||
+        typeof loan.nombreGuardaEntrega !== 'string' || loan.nombreGuardaEntrega.trim() === '' ||
+        typeof loan.instructorRecibe !== 'string' || loan.instructorRecibe.trim() === '') {
+  res.status(400).json({
+    success: false,
+    error: 'Datos del préstamo inválidos.'
+  });
+  return;
+}
+
+next();</pre>
+                    <p class="text-[10px] text-slate-400">La interfaz describe el contrato; estas comprobaciones son las que inspeccionan el JSON en ejecución. En la actividad se completará la validación de todos los campos.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 4: ¿QUÉ SE IMPLEMENTARÍA EN CONTROLLABS? -->
+        <section id="modulos-implementacion" class="scroll-mt-20 space-y-8">
+            <div class="border-l-4 border-sky-500 pl-4">
+                <h3 class="text-2xl font-bold text-sena-dark tracking-tight">4. ¿Qué se implementaría en ControlLabs para este módulo?</h3>
+                <p class="text-slate-500 text-sm">Traducimos la necesidad en piezas pequeñas y aclaramos qué se construye ahora y qué queda para después.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 font-mono text-xs">
+                <!-- A. Auditoría y Logging -->
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3 font-sans">
+                    <span class="bg-sky-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-full uppercase font-mono">A. Auditoría y Logging (requestLogger)</span>
+                    <h4 class="font-bold text-slate-800 text-sm">Trazabilidad de Tráfico HTTP</h4>
+                    <p class="text-xs text-slate-600 leading-relaxed font-sans">
+                        <strong>Propósito:</strong> Registrar información básica de cada petición HTTP que entra al sistema.<br>
+                        <strong>Aplicación en ControlLabs:</strong> Cada vez que un guarda registra un préstamo o un instructor acepta un inventario, el middleware captura la marca de tiempo, el método HTTP (<code class="font-mono">POST</code>, <code class="font-mono">GET</code>, <code class="font-mono">PUT</code>), la ruta consultada y emite un registro institucional en consola con formato estricto:
+                    </p>
+                    <div class="bg-slate-950 text-sky-300 p-3 rounded-xl font-mono text-[11px]">
+                        [AUDIT SENA] [2026-06-01T14:32:00.000Z] POST /api/v1/loans
+                    </div>
+                </div>
+
+                <!-- B. Autorización por Roles -->
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3 font-sans">
+                    <span class="bg-purple-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-full uppercase font-mono">B. Autorización por Roles / RBAC (verifyRole)</span>
+                    <h4 class="font-bold text-slate-800 text-sm">Protección de Endpoints Críticos</h4>
+                    <p class="text-xs text-slate-600 leading-relaxed font-sans">
+                        <strong>Propósito:</strong> Restringir rutas críticas según el rol institucional del usuario.<br>
+                        <strong>Aplicación en ControlLabs:</strong>
+                    </p>
+                    <ul class="text-xs text-slate-600 space-y-1.5 list-disc list-inside font-sans">
+                        <li>El endpoint <code class="font-mono">POST /api/v1/loans</code> se reservará para usuarios autenticados con rol <strong>Guarda</strong>.</li>
+                        <li>El endpoint <code class="font-mono">PUT /api/v1/loans/:id/accept</code> se reservará para usuarios autenticados con rol <strong>Instructor</strong>.</li>
+                        <li>Sin autenticación corresponde <code class="font-mono text-rose-600 font-bold">401 Unauthorized</code>; con sesión válida pero rol insuficiente, <code class="font-mono text-rose-600 font-bold">403 Forbidden</code>. <em>Se implementará cuando exista autenticación; el rol debe provenir de la identidad verificada, no de un valor arbitrario enviado por el cliente.</em></li>
+                    </ul>
+                </div>
+
+                <!-- C. Validación de Payload -->
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3 font-sans">
+                    <span class="bg-amber-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-full uppercase font-mono">C. Validación de Payload (validateLoanPayload)</span>
+                    <h4 class="font-bold text-slate-800 text-sm">Contrato DTO Estricto</h4>
+                    <p class="text-xs text-slate-600 leading-relaxed font-sans">
+                        <strong>Propósito:</strong> Comprobar en tiempo de ejecución que los datos enviados en un <code class="font-mono">POST</code> tengan los campos y tipos básicos esperados antes de llegar al controlador.<br>
+                        <strong>Aplicación en ControlLabs:</strong> Comprueba que <code class="font-mono">aula</code>, <code class="font-mono">numeroPC</code>, <code class="font-mono">nombreGuardaEntrega</code> e <code class="font-mono">instructorRecibe</code> existan y tengan el tipo esperado. El DTO describe esa forma para TypeScript, pero no reemplaza esta comprobación.
+                    </p>
+                </div>
+
+                <!-- D. Interceptor Global de Errores -->
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3 font-sans">
+                    <span class="bg-rose-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-full uppercase font-mono">D. Interceptor Global de Errores (errorHandler)</span>
+                    <h4 class="font-bold text-slate-800 text-sm">Manejo Centralizado de Excepciones</h4>
+                    <p class="text-xs text-slate-600 leading-relaxed font-sans">
+                        <strong>Propósito:</strong> Centralizar los errores que Express recibe o que una capa deriva explícitamente con <code class="font-mono">next(err)</code>.<br>
+                        <strong>Aplicación en ControlLabs:</strong> Express busca el manejador de cuatro parámetros (<code class="font-mono">err, req, res, next</code>) y responde con un JSON estandarizado, sin exponer detalles internos al cliente:
+                    </p>
+                    <div class="bg-slate-950 text-rose-300 p-3 rounded-xl font-mono text-[11px] space-y-1">
+                        <p>{</p>
+                        <p>&nbsp;&nbsp;"status": "error",</p>
+                        <p>&nbsp;&nbsp;"message": "Error interno del servidor en ControlLabs",</p>
+                        <p>&nbsp;&nbsp;"timestamp": "..."</p>
+                        <p>}</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 5: ORDEN DE REGISTRO EN APP.TS -->
+        <section id="orden-app" class="scroll-mt-20 space-y-8">
+            <div class="border-l-4 border-amber-500 pl-4">
+                <h3 class="text-2xl font-bold text-sena-dark tracking-tight">5. Orden Estricto de Registro en <code>src/app.ts</code></h3>
+                <p class="text-slate-500 text-sm">En Express, el orden en el que declaras los middlewares es vital para que la cadena de ejecución funcione correctamente.</p>
+            </div>
+
+            <div class="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                <ol class="list-decimal list-inside space-y-3 text-xs sm:text-sm text-slate-700 leading-relaxed font-sans">
+                    <li><strong>Middlewares Globales Iniciales:</strong> <code class="font-mono bg-slate-100 px-1.5 py-0.5 rounded">cors()</code> y después <code class="font-mono bg-slate-100 px-1.5 py-0.5 rounded">requestLogger</code>; registra el logger antes del parser para auditar también cuerpos JSON malformados.</li>
+                    <li><strong>Parser del cuerpo:</strong> <code class="font-mono bg-slate-100 px-1.5 py-0.5 rounded">express.json()</code> después del logger y antes de las rutas.</li>
+                    <li><strong>Ruta de salud y rutas de la API:</strong> el health check y <code class="font-mono bg-slate-100 px-1.5 py-0.5 rounded">app.use('/api/v1', apiRoutes)</code> se registran después del logger; el validador DTO se conecta en el router solo a <code class="font-mono">POST /loans</code>.</li>
+                    <li><strong>Respuesta 404 (Ruta No Encontrada):</strong> después de montar las rutas, una capa final responde cuando ninguna ruta coincide. Un 404 no es por sí solo un error lanzado a <code class="font-mono">next(err)</code>.</li>
+                    <li><strong>Manejador Global de Errores:</strong> <code class="font-mono bg-slate-100 px-1.5 py-0.5 rounded">app.use(globalErrorHandler)</code> va después de rutas y demás middleware para recibir los errores derivados con <code class="font-mono">next(err)</code>.</li>
+                </ol>
+                <div class="bg-slate-950 rounded-2xl p-6 text-xs font-mono text-emerald-300 border border-slate-800 shadow-xl">
+                    <div class="text-slate-400 text-[10px] pb-3 border-b border-slate-800">src/app.ts: orden de montaje</div>
+                    <pre class="overflow-x-auto pt-3">app.use(cors());
+                    app.use(requestLogger);
+                    app.use(express.json());
+
+                    app.get('/api/v1/health', (_req, res) =&gt; {
+                      res.status(200).json({
+                        status: 'success',
+                        message: 'ControlLabs API operando correctamente',
+                        timestamp: new Date().toISOString()
+                      });
+                    });
+                    app.use('/api/v1', apiRoutes);
+
+                    app.use((_req, res) =&gt; {
+                      res.status(404).json({ success: false, error: 'Ruta no encontrada.' });
+                    });
+
+app.use(globalErrorHandler);</pre>
+                    <p class="font-sans text-[11px] text-slate-400 pt-3">El parser JSON debe ir antes de las rutas para que <code>req.body</code> esté disponible. Registra el health check antes del 404 y el manejador de errores al final.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 6: CÓDIGO FUENTE EN TYPESCRIPT -->
+        <section id="codigo-fuente" class="scroll-mt-20 space-y-8">
+            <div class="border-l-4 border-purple-500 pl-4">
+                <h3 class="text-2xl font-bold text-sena-dark tracking-tight">6. Implementación inicial en TypeScript</h3>
+                <p class="text-slate-500 text-sm">Ahora que conocemos el recorrido, iniciamos el código de logger, validador y manejador global de errores.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 font-mono text-xs">
+                <!-- 1. Logger Middleware -->
+                <div class="bg-slate-900 rounded-3xl p-6 text-amber-300 space-y-3 border border-slate-800 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="text-slate-400 text-[10px] pb-1 border-b border-slate-800">// 📁 src/middlewares/logger.middleware.ts</div>
+                        <pre class="overflow-x-auto pt-3">import { Request, Response, NextFunction } from 'express';
+
+export const requestLogger = (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): void => {
+  const timestamp = new Date().toISOString();
+  console.log(`[AUDIT SENA] [${timestamp}] ${req.method} ${req.originalUrl}`);
+  next();
+};</pre>
+                    </div>
+                    <p class="text-slate-400 font-sans text-[11px] pt-2">Auditoría automática de tráfico.</p>
+                </div>
+
+                <!-- 2. Validate Payload Middleware -->
+                <div class="bg-slate-900 rounded-3xl p-6 text-xs font-mono text-sky-300 space-y-3 border border-slate-800 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="text-slate-400 text-[10px] pb-1 border-b border-slate-800">// 📁 src/middlewares/validateLoan.middleware.ts</div>
+                        <pre class="overflow-x-auto pt-3">import { Request, Response, NextFunction } from 'express';
+import { ICreateLoanDTO } from '../dtos/loan.dto';
+
+const isCreateLoanDTO = (value: unknown): value is ICreateLoanDTO =&gt; {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        return false;
+    }
+
+    const loan = value as Record&lt;string, unknown&gt;;
+    return (
+        typeof loan.aula === 'string' &amp;&amp; loan.aula.trim() !== '' &amp;&amp;
+        typeof loan.numeroPC === 'number' &amp;&amp; Number.isInteger(loan.numeroPC) &amp;&amp;
+        typeof loan.nombreGuardaEntrega === 'string' &amp;&amp; loan.nombreGuardaEntrega.trim() !== '' &amp;&amp;
+        typeof loan.instructorRecibe === 'string' &amp;&amp; loan.instructorRecibe.trim() !== ''
+    );
+};
+
+export const validateLoanPayload = (
+    req: Request,
+    res: Response,
+    next: NextFunction
+): void =&gt; {
+    const body: unknown = req.body;
+    if (!isCreateLoanDTO(body)) {
+        res.status(400).json({
+            success: false,
+            error: 'Datos del préstamo inválidos.'
+        });
+        return;
+    }
+    next();
+};</pre>
+                    </div>
+                    <p class="text-slate-400 font-sans text-[11px] pt-2">El type guard comprueba el JSON real antes de continuar y reduce el riesgo de que el controlador reciba datos con forma incorrecta.</p>
+                </div>
+
+                <!-- 3. Global Error Handler Middleware -->
+                <div class="bg-slate-900 rounded-3xl p-6 text-xs font-mono text-purple-300 space-y-3 border border-slate-800 shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="text-slate-400 text-[10px] pb-1 border-b border-slate-800">// 📁 src/middlewares/errorHandler.middleware.ts</div>
+                                                <pre class="overflow-x-auto pt-3">import { Request, Response, NextFunction } from 'express';
+
+export const globalErrorHandler = (
+    err: unknown,
+    _req: Request,
+    res: Response,
+    next: NextFunction
+): void =&gt; {
+    if (res.headersSent) {
+        next(err);
+        return;
+    }
+
+    if (
+        typeof err === 'object' &amp;&amp;
+        err !== null &amp;&amp;
+        'type' in err &amp;&amp;
+        err.type === 'entity.parse.failed'
+    ) {
+        res.status(400).json({
+            success: false,
+            error: 'El cuerpo JSON está malformado.'
+        });
+        return;
+    }
+
+    console.error(err);
+    res.status(500).json({
+        status: 'error',
+        message: 'Error interno del servidor en ControlLabs',
+        timestamp: new Date().toISOString()
+    });
+};</pre>
+                    </div>
+                    <p class="text-slate-400 font-sans text-[11px] pt-2">Regístralo al final de <code>app.ts</code>. Los errores de sintaxis del parser se traducen a <code>400</code>; los demás errores inesperados reciben una respuesta genérica <code>500</code>. Si ya se enviaron encabezados, delega con <code>next(err)</code>. En Express 4 deriva los rechazos asíncronos explícitamente; Express 5 deriva los rechazos de handlers asíncronos.</p>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                <h4 class="font-bold text-slate-800 text-sm">¿Cómo se conecta un servicio después?</h4>
+                <p class="text-xs text-slate-600 leading-relaxed">El router compone middleware y controlador. El middleware valida la forma HTTP; el controlador adapta esa entrada y la respuesta HTTP; el servicio aplica reglas de negocio y coordina persistencia. No pongas consultas a base de datos ni reglas de disponibilidad dentro del middleware o del controlador.</p>
+                <div class="bg-slate-950 rounded-2xl p-5 text-[11px] font-mono text-emerald-300 space-y-3">
+                    <pre class="overflow-x-auto">// src/controllers/loan.controller.ts
+import { Request, Response } from 'express';
+
+public static createLoan = (req: Request, res: Response): void =&gt; {
+  // TODO: llamar al servicio y responder 201 cuando exista.
+  res.status(501).json({
+    success: false,
+    message: 'El registro de préstamos todavía no está implementado.'
+  });
+};
+
+// src/routes/loan.routes.ts
+router.post('/', validateLoanPayload, LoanController.createLoan);
+
+// src/services/loan.service.ts
+createLoan(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
+  // Reglas de negocio y coordinación con el repositorio.
+}</pre>
+                </div>
+                <p class="text-[11px] text-slate-500">Mientras el servicio no exista, el controlador responde <code>501 Not Implemented</code>: es una limitación conocida, no una excepción. No se lanza un error para simularla.</p>
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 text-[11px] text-amber-950 space-y-2">
+                    <p><strong>¿Qué cambia cuando conectemos un servicio asíncrono?</strong> La llamada, por ejemplo <code>await loanService.createLoan(...)</code>, puede esperar una base de datos. El handler entonces se declara <code>async</code> y devuelve <code>Promise&lt;void&gt;</code>: la promesa no es el resultado del préstamo, sino la ejecución pendiente del handler. En Express 5 los rechazos no capturados de esa promesa se reenvían automáticamente al middleware global.</p>
+                    <p><strong>¿Para qué sirve <code>next: NextFunction</code>?</strong> Express puede pasar al handler el tercer argumento <code>next</code>. <code>next()</code> continúa el flujo normal; <code>next(error)</code> lo desvía al middleware de errores. Si usamos <code>try/catch</code> para capturar un fallo, llamamos <code>next(error)</code> desde el <code>catch</code> para transferirlo expresamente al manejador global.</p>
+                </div>
+                <div class="bg-slate-950 rounded-xl p-4 text-[11px] font-mono text-emerald-300 space-y-2">
+                    <p class="font-sans font-bold text-emerald-200">Patrón futuro cuando exista loanService (no es la respuesta provisional actual):</p>
+                    <pre class="overflow-x-auto">public static createLoan = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise&lt;void&gt; =&gt; {
+  try {
+    const loan = await loanService.createLoan(req.body as ICreateLoanDTO);
+    res.status(201).json({ success: true, data: loan });
+  } catch (error) {
+    next(error);
+  }
+};</pre>
+                </div>
+                <div class="bg-sky-50 p-4 rounded-xl border border-sky-200 text-[11px] text-sky-950 space-y-2">
+                    <p><strong>¿Qué ocurre con <code>throw new Error(...)</code> cuando falla un servicio?</strong></p>
+                    <ol class="list-decimal list-inside space-y-1">
+                        <li>Si el servicio ejecuta <code>throw new Error('...')</code>, o su promesa rechaza, el <code>await</code> hace que la ejecución salte al <code>catch</code>.</li>
+                        <li>El <code>catch (error)</code> recibe el objeto de error; <code>throw</code> por sí mismo no envía una respuesta HTTP.</li>
+                        <li><code>next(error)</code> informa a Express que abandone el flujo normal y busque el manejador global (middleware con cuatro parámetros).</li>
+                        <li><code>globalErrorHandler</code> registra el detalle internamente y responde al cliente con JSON genérico <code>500</code>, sin filtrar mensaje ni stack.</li>
+                    </ol>
+                    <p>El <code>throw</code> no debe usarse como sustituto de “todavía no implementado”: esa respuesta es <code>501</code>. Para practicar una excepción, usa la ruta temporal de la prueba D o provoca un fallo real del servicio. Al conectar el servicio, responde <code>201</code> si crea el préstamo; errores de negocio conocidos podrán traducirse a <code>404</code> o <code>409</code>.</p>
+                </div>
+                <p class="text-[11px] text-slate-500"><strong>Nota sobre Express 5:</strong> si el handler asíncrono no captura el error, Express propaga automáticamente el rechazo. El <code>try/catch</code> con <code>next(error)</code> sigue siendo una forma explícita de mostrar y controlar el traspaso; si se captura un error, el <code>catch</code> debe derivarlo con <code>next(error)</code> o responder por completo, no dejarlo desaparecer.</p>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 7: PRÁCTICA DE CODIFICACIÓN EN VS CODE -->
+        <section id="practica-vscode" class="scroll-mt-20 space-y-8">
+            <div class="border-l-4 border-emerald-500 pl-4">
+                <h3 class="text-2xl font-bold text-sena-dark tracking-tight">7. Actividad guiada: construir y comprobar el pipeline</h3>
+                <p class="text-slate-500 text-sm">El propósito no es crear archivos por crear: cada paso responde a una necesidad concreta de ControlLabs.</p>
+            </div>
+
+            <div class="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 text-xs text-slate-700 space-y-2">
+                    <p class="font-bold text-sena-dark">Objetivo de la actividad</p>
+                    <p>Al terminar, el equipo podrá enviar una petición de préstamo, observarla en el logger, rechazar datos incompletos con <code class="font-mono">400</code>, dejar pasar datos válidos al controlador y devolver errores inesperados con una respuesta JSON consistente.</p>
+                    <p><strong>Pregunta guía:</strong> ¿Qué fallo evita cada archivo y cómo comprobará el equipo que funciona?</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-slate-700 leading-relaxed font-sans">
+                    <div class="space-y-4">
+                        <div class="flex items-start space-x-3">
+                            <span class="bg-sena-green text-white font-bold px-2.5 py-1 rounded-lg text-xs font-mono">Paso 1</span>
+                            <div>
+                                <h4 class="font-bold text-slate-800">Crear la carpeta de middlewares</h4>
+                                <p class="text-slate-600 text-xs">Crea el directorio <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">src/middlewares/</code> dentro de tu proyecto backend.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-3">
+                            <span class="bg-sena-green text-white font-bold px-2.5 py-1 rounded-lg text-xs font-mono">Paso 2</span>
+                            <div>
+                                <h4 class="font-bold text-slate-800">Codificar el Logger de Auditoría</h4>
+                                <p class="text-slate-600 text-xs">Crea <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">logger.middleware.ts</code> y prueba el registro de auditoría en tu consola al realizar peticiones GET.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-3">
+                            <span class="bg-sena-green text-white font-bold px-2.5 py-1 rounded-lg text-xs font-mono">Paso 3</span>
+                            <div>
+                                <h4 class="font-bold text-slate-800">Definir el DTO y el validador</h4>
+                                <p class="text-slate-600 text-xs">Crea <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">src/dtos/loan.dto.ts</code> para compartir el contrato y <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">validateLoan.middleware.ts</code> para revisar valores reales en tiempo de ejecución.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex items-start space-x-3">
+                            <span class="bg-sena-green text-white font-bold px-2.5 py-1 rounded-lg text-xs font-mono">Paso 4</span>
+                            <div>
+                                <h4 class="font-bold text-slate-800">Conectar el flujo en app.ts</h4>
+                                <p class="text-slate-600 text-xs">Codifica <code class="font-mono bg-slate-100 px-1 py-0.5 rounded">errorHandler.middleware.ts</code> con sus 4 parámetros y regístralo después de las rutas y del manejador 404.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-3">
+                            <span class="bg-sena-green text-white font-bold px-2.5 py-1 rounded-lg text-xs font-mono">Paso 5</span>
+                            <div>
+                                <h4 class="font-bold text-slate-800">Probar los resultados esperados</h4>
+                                <p class="text-slate-600 text-xs">Con <strong>Thunder Client / Postman</strong>, comprueba: solicitud válida continúa; campo requerido ausente devuelve <code class="font-mono text-amber-600 font-bold">400</code>; ruta inexistente devuelve <code class="font-mono">404</code>; error derivado con <code class="font-mono">next(err)</code> devuelve <code class="font-mono text-rose-600 font-bold">500</code> sin stack trace público.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-200 pt-6 space-y-5">
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-sm">Ejercicio de prueba: observar el POST de un préstamo</h4>
+                        <p class="text-xs text-slate-600 mt-1">En Thunder Client o Postman crea una petición <code class="font-mono">POST http://localhost:5000/api/v1/loans</code>, selecciona <code class="font-mono">Body → JSON</code> y envía cada objeto por separado. El servidor usa el puerto 5000 por defecto; puedes cambiarlo con <code>PORT</code>.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <div class="bg-slate-950 text-emerald-300 p-4 rounded-xl space-y-2">
+                            <p class="text-[11px] font-bold text-emerald-200">Prueba A · Datos válidos</p>
+                            <pre class="overflow-x-auto text-[11px]">{
+  "aula": "301",
+  "numeroPC": 12,
+  "nombreGuardaEntrega": "Laura Gómez",
+  "instructorRecibe": "Carlos Ruiz"
+}</pre>
+                            <p class="text-[10px] text-slate-300">Esperado: logger registra el POST → validador llama a <code>next()</code> → controlador recibe el préstamo. En este esqueleto el controlador responde <code>501</code> porque el registro aún no está implementado; cuando se conecte el servicio de creación, lo habitual será responder <code>201</code>.</p>
+                        </div>
+                        <div class="bg-slate-950 text-amber-300 p-4 rounded-xl space-y-2">
+                            <p class="text-[11px] font-bold text-amber-200">Prueba B · Falta un campo requerido</p>
+                            <pre class="overflow-x-auto text-[11px]">{
+  "aula": "301",
+  "numeroPC": 12,
+    "instructorRecibe": "Carlos Ruiz"
+}</pre>
+                                                        <p class="text-[10px] text-slate-300">Falta <code>nombreGuardaEntrega</code>. Esperado: logger registra el POST → validador responde <code>400</code> → no se llama a <code>next()</code> ni se ejecuta el controlador.</p>
+                        </div>
+                        <div class="bg-slate-950 text-rose-300 p-4 rounded-xl space-y-2">
+                            <p class="text-[11px] font-bold text-rose-200">Prueba C · Tipo de dato incorrecto</p>
+                            <pre class="overflow-x-auto text-[11px]">{
+  "aula": "301",
+  "numeroPC": "doce",
+  "nombreGuardaEntrega": "Laura Gómez",
+  "instructorRecibe": "Carlos Ruiz"
+}</pre>
+                            <p class="text-[10px] text-slate-300">Esperado: logger registra el POST → validador detecta que <code>numeroPC</code> no es número y responde <code>400</code> antes del controlador.</p>
+                        </div>
+                        <div class="bg-slate-950 text-sky-300 p-4 rounded-xl space-y-2">
+                            <p class="text-[11px] font-bold text-sky-200">Prueba D · Error del servidor</p>
+                            <p class="text-[10px] text-slate-300">Envía <code>GET http://localhost:5000/__test/error</code> después de añadir temporalmente la ruta que aparece abajo.</p>
+                            <p class="text-[10px] text-slate-300">Esperado: logger registra el GET → la ruta llama a <code>next(error)</code> → manejador global responde <code>500</code> con JSON genérico, sin stack trace.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 rounded-xl p-4 text-xs font-mono text-sky-300 space-y-2">
+                        <p class="text-[11px] font-bold text-sky-200">Ruta temporal para provocar el 500 (solo desarrollo)</p>
+                        <p class="text-[10px] text-slate-400">Agrégala en <code>src/app.ts</code> después del logger y antes del manejador 404 y del manejador global. Elimínala al terminar la prueba.</p>
+                        <pre class="overflow-x-auto">app.get('/__test/error', (_req, _res, next) =&gt; {
+  next(new Error('Error de prueba'));
+});</pre>
+                        <p class="font-sans text-[10px] text-slate-300">Respuesta esperada: <code>{ "status": "error", "message": "Error interno del servidor en ControlLabs", "timestamp": "..." }</code></p>
+                    </div>
+
+                    <div class="bg-sky-50 p-4 rounded-xl border border-sky-200 text-xs text-sky-950 space-y-2">
+                        <p class="font-bold">Qué observar y registrar en la bitácora</p>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>En consola debe aparecer una línea de auditoría por cada intento, incluso para los cuerpos inválidos, porque el logger corre antes del validador.</li>
+                            <li>En las pruebas B y C, confirma que la respuesta sea <code class="font-mono">400</code> y que no se cree ningún préstamo; la prueba B verifica específicamente <code class="font-mono">nombreGuardaEntrega</code>.</li>
+                            <li>En la prueba A, confirma que llega al controlador y observa el estado y JSON que este devuelve.</li>
+                            <li>En la prueba D, confirma que el error llega al manejador global y que la respuesta no revela el mensaje interno de prueba ni el stack.</li>
+                            <li>Explica por qué cambiar <code class="font-mono">12</code> por <code class="font-mono">"12"</code> cambia el resultado, aunque ambos parezcan representar el número doce.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="bg-sena-lightGreen p-4 rounded-2xl border border-sena-green/30 text-xs text-slate-700 space-y-1">
+                    <p class="font-bold text-sena-dark">💡 Nota Importante de Integración:</p>
+                    <p>Construiremos las capas de registro, validación y manejo de errores. <strong>La autorización por roles queda para una sesión posterior</strong>, cuando exista autenticación real; escribir <code class="font-mono">verifyRole</code> ahora sin una identidad verificada daría una falsa sensación de seguridad.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer SENA -->
+    <footer class="bg-sena-dark text-white border-t-2 border-sena-green py-8 text-center text-xs text-slate-400 space-y-2">
+        <p class="font-bold text-slate-200">SERVICIO NACIONAL DE APRENDIZAJE - SENA</p>
+        <p>Centro de Gestión de Mercados, Logística y Tecnologías de la Información</p>
+        <p>Análisis y Desarrollo de Software (ADSO) • Middlewares, DTO y errores • ControlLabs</p>
+        <p class="text-sena-green font-semibold pt-2">Recurso Pedagógico Oficial Consolidado</p>
+    </footer>
+
+</body>
+</html>
