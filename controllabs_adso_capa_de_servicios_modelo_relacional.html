@@ -225,21 +225,30 @@ CREATE INDEX idx_incidents_equipment_status ON incidents(equipment_id, estado);
             type: 'postgres',
             host: process.env.DB_HOST ?? 'localhost',
             database: process.env.DB_NAME ?? 'controllabs',
-            entities: [LoanEntity]
+            entities: [LoanEntity, RoomEntity, UserEntity]
           });</pre>
                         <p class="text-[11px] leading-relaxed">El <code>DataSource</code> es la puerta de entrada a la configuración de TypeORM. De él se obtiene el repositorio asociado a una entidad; no es una entidad ni guarda por sí mismo cada préstamo.</p>
                       </div>
 
                       <div class="space-y-2">
                         <h5 class="font-bold text-sm">2. La entidad describe el modelo persistente</h5>
-                        <p class="text-xs leading-relaxed"><code>LoanEntity</code> es una clase con decoradores que TypeORM interpreta como metadatos. <code>@Entity({ name: 'loans' })</code> indica la tabla. <code>@PrimaryGeneratedColumn()</code> marca la clave primaria generada; <code>@Column({ type: 'uuid' })</code> y los demás decoradores describen tipos; <code>@CreateDateColumn</code> marca una fecha de creación administrada por TypeORM. Estas anotaciones describen cómo leer y escribir filas; no contienen las reglas del caso de uso.</p>
-                        <p class="text-xs leading-relaxed">En esta entidad, los identificadores UUID se guardan como propiedades escalares. No hay decoradores de relación como <code>@ManyToOne</code> ni <code>@JoinColumn</code>; por tanto, el ORM no modela aquí objetos relacionados de ambiente o usuario. Las claves foráneas y restricciones definidas en PostgreSQL siguen siendo responsabilidad del esquema de la base de datos.</p>
+                        <p class="text-xs leading-relaxed"><code>LoanEntity</code> es una clase de TypeScript cuya metadata le indica a TypeORM cómo representar una fila de la tabla <code>loans</code>. Un decorador es una función aplicada a una clase o propiedad para registrar esa metadata; por sí solo no ejecuta una consulta. Cuando se carga el <code>DataSource</code>, TypeORM reúne los decoradores de las clases incluidas en <code>entities</code> y utiliza esa información al construir consultas y persistir entidades.</p>
+                        <ul class="list-disc list-inside space-y-1 text-[11px] leading-relaxed">
+                            <li><code>@Entity({ name: 'loans' })</code> registra la clase como entidad y vincula sus instancias con la tabla <code>loans</code>.</li>
+                            <li><code>@PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })</code> declara la clave primaria llamada <code>id</code>; PostgreSQL genera su valor y el tipo coincide con el <code>BIGINT</code> del esquema.</li>
+                            <li><code>@Column(...)</code> registra una columna escalar. La opción <code>type</code> fija el tipo PostgreSQL, <code>name</code> fija el nombre físico y opciones como <code>length</code> o <code>nullable</code> describen límites y nulabilidad.</li>
+                            <li><code>@CreateDateColumn</code> es una columna especial: TypeORM registra y administra la fecha de creación al insertar la entidad.</li>
+                            <li><code>@ManyToOne</code> declara que muchos préstamos pueden apuntar a un mismo ambiente o usuario. <code>@JoinColumn</code> señala qué columna FK de <code>loans</code> guarda la referencia; como instructor y guarda apuntan ambos a <code>users</code>, cada propiedad tiene su propio <code>JoinColumn</code>.</li>
+                            <li><code>LoanStatus</code> limita los valores permitidos por TypeScript al compilar; no crea por sí mismo un ENUM ni una restricción SQL. Esa integridad también debe existir en la base.</li>
+                            <li>El signo <code>!</code> después de una propiedad es la aserción de asignación definida de TypeScript: la instancia se hidrata desde la base o se completa al guardarla, aunque no se inicialice en el constructor.</li>
+                        </ul>
+                        <p class="text-xs leading-relaxed">La entidad también modela las relaciones: cada préstamo apunta a un ambiente con <code>@ManyToOne(() =&gt; RoomEntity)</code> y a dos usuarios con dos propiedades <code>@ManyToOne(() =&gt; UserEntity)</code>. <code>@JoinColumn</code> vincula cada propiedad con su FK existente (<code>room_id</code>, <code>instructor_id</code>, <code>guarda_id</code>); <code>nullable: false</code> y <code>onDelete: 'RESTRICT'</code> reflejan la obligatoriedad y la política del esquema. Así el resultado puede exponer <code>loan.room.nombre</code> o <code>loan.instructor.nombre</code>, no solo UUID planos. La FK continúa protegida por PostgreSQL; la metadata de TypeORM permite además cargar esas filas relacionadas. Esta relación no valida que el rol de ese usuario sea el correcto; esa es una regla de negocio aparte.</p>
                       </div>
 
                       <div class="space-y-2">
                         <h5 class="font-bold text-sm">3. El repositorio de TypeORM ejecuta las operaciones</h5>
                         <p class="text-xs leading-relaxed"><code>TypeOrmLoanRepository</code> implementa el contrato <code>LoanRepository</code>. En el constructor obtiene un <code>Repository&lt;LoanEntity&gt;</code> desde <code>AppDataSource</code>. Ese repositorio especializado es la API de TypeORM para crear instancias, buscar filas y persistir cambios de la entidad.</p>
-                        <p class="text-xs leading-relaxed">Al crear un préstamo, <code>repository.create(...)</code> construye una instancia de <code>LoanEntity</code> en memoria; todavía no realiza una inserción. Después, <code>repository.save(entity)</code> persiste la instancia y espera el resultado de PostgreSQL. El adaptador establece el estado inicial, deja <code>acceptedAt</code> vacío y finalmente convierte la entidad guardada al objeto de dominio que espera el resto de la aplicación.</p>
+                        <p class="text-xs leading-relaxed">Al crear un préstamo, el DTO todavía recibe los UUID (<code>roomId</code>, <code>instructorId</code>, <code>guardaId</code>). El adaptador los convierte en referencias de relación como <code>room: { id: input.roomId }</code>; no necesita recibir el objeto completo desde el cliente. <code>repository.create(...)</code> arma la instancia sin insertar; <code>repository.save(entity)</code> persiste las FK. Luego el adaptador consulta el registro con sus relaciones para devolver objetos completos y establece estado/fechas según el caso de uso.</p>
                         <pre class="bg-slate-950 text-emerald-300 p-3 rounded-xl overflow-x-auto text-[11px] leading-relaxed">const entity = this.repository.create({
             ...input,
             estado: 'PENDIENTE_APROBACION',
@@ -248,7 +257,7 @@ CREATE INDEX idx_incidents_equipment_status ON incidents(equipment_id, estado);
           const saved = await this.repository.save(entity);
           return this.toDomain(saved);</pre>
                         <p class="text-xs leading-relaxed">Para aceptar un préstamo, el adaptador busca la fila, comprueba que su estado sea el esperado, cambia <code>estado</code> y establece <code>acceptedAt</code>; luego usa <code>save</code>. Si no existe o ya cambió de estado, devuelve <code>null</code> y el servicio decide si corresponde <code>NOT_FOUND</code> o <code>CONFLICT</code>. En esta versión la lectura y el guardado son operaciones separadas; si varias solicitudes pueden aceptar el mismo préstamo simultáneamente, conviene realizar la transición con una actualización condicional atómica o una transacción.</p>
-                        <p class="text-xs leading-relaxed">Las lecturas usan <code>findOne</code> para buscar por identificador y <code>createQueryBuilder</code> para construir la consulta filtrada por ambiente. El parámetro <code>:roomId</code> se entrega separado del texto de la consulta, en vez de concatenarse como SQL; así TypeORM puede parametrizar el valor. La conversión <code>toDomain</code> también normaliza las fechas a cadenas ISO, manteniendo el contrato del API independiente de la clase ORM.</p>
+                        <p class="text-xs leading-relaxed">Las lecturas usan <code>createQueryBuilder</code> con <code>leftJoinAndSelect</code> para cargar <code>room</code>, <code>instructor</code> y <code>guarda</code> en la misma consulta. El filtro por ambiente se aplica sobre <code>room.id</code> usando el parámetro <code>:roomId</code>, separado del texto SQL. La conversión <code>toDomain</code> construye objetos de respuesta con campos seleccionados (sin exponer el email del usuario) y normaliza fechas a cadenas ISO.</p>
                       </div>
 
                       <div class="space-y-2">
@@ -503,13 +512,13 @@ Activos individuales           → no quedan asociados con el modelo actual</div
 
                     <section class="bg-white text-slate-800 p-5 md:p-7 rounded-2xl space-y-5">
                         <div class="border-l-4 border-sena-blue pl-4">
-                            <h4 class="font-sans font-bold text-xl">Implementación completa: archivos listos para copiar y pegar</h4>
-                            <p class="font-sans text-xs text-slate-600 mt-1">Estos son archivos completos, con sus imports y rutas correctas, basados en la arquitectura que quedó al terminar la Sesión 3. Crea o reemplaza cada archivo indicado. Los bloques parciales de explicación que siguen son solo extractos; para implementar usa estos bloques completos.</p>
+                            <h4 class="font-sans font-bold text-xl">Referencia de código complementaria al taller</h4>
+                            <p class="font-sans text-xs text-slate-600 mt-1">Esta sección no es una secuencia independiente. Sigue la Parte 1 del taller para definir tipos, entidades y persistencia; después continúa con la Parte 2 para servicios y API. Usa aquí los fragmentos como referencia por archivo.</p>
                         </div>
 
                         <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl font-sans text-[11px] text-amber-950 space-y-1">
                                     <p><strong>Antes de pegar:</strong> conserva <code>src/middlewares/logger.middleware.ts</code>, <code>src/routes/index.ts</code> y el montaje de la aplicación de la sesión anterior. Como cambió el esquema de préstamos, reemplaza el DTO y su middleware con los ejemplos actualizados de abajo; sus rutas ya deben usar ese validador.</p>
-                                    <p>Los nuevos archivos son <code>src/errors/domain.error.ts</code>, <code>src/repositories/loan.repository.ts</code>, <code>src/repositories/typeorm-loan.repository.ts</code>, <code>src/config/data-source.ts</code>, <code>src/entities/loan.entity.ts</code>, <code>src/services/loan.service.ts</code> y <code>src/container.ts</code>. Se reemplazan <code>src/controllers/loan.controller.ts</code> y <code>src/middlewares/errorHandler.middleware.ts</code>. La persistencia ya es con PostgreSQL y TypeORM, sin depender de almacenamiento efímero dentro del proceso.</p>
+                                    <p>La Parte 1 incorpora <code>src/models/loan.types.ts</code>, las entidades <code>RoomEntity</code>, <code>UserEntity</code> y <code>LoanEntity</code>, <code>src/config/data-source.ts</code>, el contrato <code>loan.repository.ts</code> y su adaptador TypeORM. La Parte 2 crea el error de dominio y el servicio, compone dependencias y ajusta controller, rutas y middleware. La persistencia usa PostgreSQL y TypeORM.</p>
                         </div>
 
                         <details open class="border border-slate-200 rounded-xl">
@@ -520,7 +529,7 @@ Activos individuales           → no quedan asociados con el modelo actual</div
   guardaId: string;
   numeroPc: number;
 }</pre>
-                                    <p class="font-sans p-4 text-[11px] text-slate-600"><code>roomId</code>, <code>instructorId</code> y <code>guardaId</code> corresponden a las FK del préstamo; <code>numeroPc</code> corresponde a <code>loans.numero_pc</code>. El repositorio PostgreSQL será responsable de convertir camelCase a snake_case; no se incluyen en el DTO los ids/fechas/estado generados. Este modelo no asigna activos concretos al préstamo. El repositorio de datos no valida las referencias en catálogos por sí mismo; eso se resuelve con la integridad del esquema y, en el caso real, con validaciones de negocio adicionales. IDs de usuario enviados por body son solo datos de práctica, no identidad ni autorización confiable; al implementar autenticación, <code>guardaId</code> debe salir de la identidad verificada y no del body.</p>
+                                    <p class="font-sans p-4 text-[11px] text-slate-600"><code>roomId</code>, <code>instructorId</code> y <code>guardaId</code> son las referencias que el cliente envía al crear; las entidades y <code>@JoinColumn</code> las mapean a las FKs <code>room_id</code>, <code>instructor_id</code> y <code>guarda_id</code>. El repositorio convierte esos IDs en referencias de entidad y las consultas de salida cargan objetos relacionados. El DTO no incluye ids/fechas/estado generados ni asigna activos concretos al préstamo. Los IDs del body son datos de práctica, no identidad ni autorización confiable; con autenticación, <code>guardaId</code> debe salir del usuario verificado.</p>
                                 </details>
 
                                 <details open class="border border-slate-200 rounded-xl">
@@ -590,11 +599,29 @@ export class DomainError extends Error {
                         <details class="border border-slate-200 rounded-xl">
                             <summary class="cursor-pointer p-4 font-sans font-bold text-sm">2. Crear src/repositories/loan.repository.ts — contrato de persistencia</summary>
                             <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { ICreateLoanDTO } from '../dtos/loan.dto';
+import type { LoanStatus, RoomStatus, UserRole } from '../models/loan.types';
+export type { LoanStatus } from '../models/loan.types';
 
-export type LoanStatus = 'PENDIENTE_APROBACION' | 'APROBADO_Y_FIRMADO';
+export interface LoanRoom {
+  id: string;
+  nombre: string;
+  bloque: string;
+  capacidadPcs: number;
+  estado: RoomStatus;
+}
 
-export interface Loan extends ICreateLoanDTO {
+export interface LoanUser {
+  id: string;
+  nombre: string;
+  rol: UserRole;
+}
+
+export interface Loan {
   id: number;
+  room: LoanRoom;
+  instructor: LoanUser;
+  guarda: LoanUser;
+  numeroPc: number;
   estado: LoanStatus;
   createdAt: string;
   acceptedAt: string | null;
@@ -630,19 +657,29 @@ export interface LoanRepository {
 
   public async create(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
     const entity = this.repository.create({
-      ...input,
+      room: { id: input.roomId },
+      instructor: { id: input.instructorId },
+      guarda: { id: input.guardaId },
+      numeroPc: input.numeroPc,
       estado: 'PENDIENTE_APROBACION',
       acceptedAt: null
     });
 
     const saved = await this.repository.save(entity);
-    return this.toDomain(saved);
+    const savedWithRelations = await this.findEntityById(Number(saved.id));
+    if (!savedWithRelations) {
+      throw new Error('No fue posible recuperar el préstamo recién creado.');
+    }
+    return this.toDomain(savedWithRelations);
   }
 
   public async findAll(filters: LoanFilters = {}): Promise&lt;Loan[]&gt; {
-    const query = this.repository.createQueryBuilder('loan');
+    const query = this.repository.createQueryBuilder('loan')
+      .leftJoinAndSelect('loan.room', 'room')
+      .leftJoinAndSelect('loan.instructor', 'instructor')
+      .leftJoinAndSelect('loan.guarda', 'guarda');
     if (filters.roomId) {
-      query.where('LOWER(CAST(loan.roomId AS text)) = LOWER(CAST(:roomId AS text))', {
+      query.andWhere('LOWER(CAST(room.id AS text)) = LOWER(CAST(:roomId AS text))', {
         roomId: filters.roomId
       });
     }
@@ -650,7 +687,7 @@ export interface LoanRepository {
     return entities.map((entity) =&gt; this.toDomain(entity));
   }
 }</pre>
-                            <p class="font-sans p-4 text-[11px] text-slate-600">El punto clave es que el servicio sigue hablando con <code>LoanRepository</code>, no con SQL ni con el cliente PostgreSQL. TypeORM convierte la entidad a SQL y devuelve objetos del dominio, preservando la separación entre negocio y infraestructura.</p>
+                            <p class="font-sans p-4 text-[11px] text-slate-600"><code>leftJoinAndSelect</code> genera los JOIN y además incorpora cada fila relacionada en las propiedades de la entidad. Por eso <code>findAll</code> puede devolver <code>loan.room</code>, <code>loan.instructor</code> y <code>loan.guarda</code> con sus campos. El filtro utiliza <code>room.id</code>. El servicio sigue hablando con el contrato <code>LoanRepository</code>, no con SQL ni con TypeORM.</p>
                         </details>
 
                         <details open class="border border-slate-200 rounded-xl">
@@ -932,8 +969,11 @@ npm run dev</pre>
   middlewares/validateLoan.middleware.ts existente: valida el body HTTP
   controllers/loan.controller.ts         existente: adapta HTTP
   routes/loan.routes.ts                  existente: conecta middleware y controller
-    config/data-source.ts                  crear: conexión PostgreSQL con TypeORM
-    entities/loan.entity.ts                crear: mapeo de la tabla loans
+  models/loan.types.ts                   crear: estados y roles compartidos
+  entities/room.entity.ts                crear: mapeo de rooms
+  entities/user.entity.ts                crear: mapeo de users
+  entities/loan.entity.ts                crear: mapeo y relaciones de loans
+  config/data-source.ts                  crear: conexión y registro de entidades
   errors/                                 crear: errores reconocibles por la app
   repositories/                           crear: contrato y adaptador de datos
   services/                               crear: reglas y casos de uso
@@ -941,24 +981,202 @@ npm run dev</pre>
                             <p class="font-sans text-[11px] text-slate-600 mt-2">No se mueve la validación del body de la Sesión 3 al servicio. Se reutiliza como puerta de entrada y se conectan las capas que faltaban.</p>
                         </div>
 
+                          <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl">
+                            <h5 class="font-sans font-bold text-sm text-emerald-950">Parte 1. Preparar y ajustar la persistencia</h5>
+                            <p class="font-sans text-xs text-emerald-900 mt-1">Primero configura PostgreSQL y completa el modelo relacional: entidades relacionadas, contrato de repositorio y adaptador TypeORM. No avances a los servicios hasta que el mapeo represente las tablas y relaciones existentes.</p>
+                          </div>
+
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
                 <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 1.</span> Configurar PostgreSQL en el archivo .env existente</h5>
                 <p class="font-sans text-xs text-slate-600">Antes de crear las capas, prepara la conexión. Usa el archivo <code>.env</code> que ya está en la raíz del proyecto: completa o actualiza las variables que falten; no crees otro archivo de entorno ni reemplaces valores locales que ya funcionan. <code>server.ts</code> carga este archivo mediante <code>dotenv/config</code> antes de iniciar la aplicación.</p>
-                <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">DB_TYPE=postgres
-  DB_HOST=localhost
-  DB_PORT=5432
-  DB_USERNAME=postgres
-  DB_PASSWORD=TU_CLAVE_LOCAL
-  DB_NAME=controllabs
-  DB_SCHEMA=public
-  PORT=5000
-  NODE_ENV=development</pre>
-                <p class="font-sans text-[11px] text-slate-600"><code>DB_TYPE</code> hace que el contenedor seleccione el repositorio de TypeORM; las variables <code>DB_HOST</code> a <code>DB_SCHEMA</code> configuran el <code>DataSource</code>; <code>PORT</code> indica dónde escucha Express. Sustituye la clave de ejemplo por la contraseña local de PostgreSQL y comprueba que el servicio de base de datos, la base <code>controllabs</code> y su esquema estén disponibles. El archivo <code>.env</code> ya está excluido por <code>.gitignore</code>: no compartas ni subas sus credenciales. Para este ejercicio usa <code>NODE_ENV=development</code>; no actives sincronización automática del esquema en producción.</p>
+                <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=TU_CLAVE_LOCAL
+DB_NAME=controllabs
+DB_SCHEMA=public
+PORT=5000
+NODE_ENV=development</pre>
+                <p class="font-sans text-[11px] text-slate-600">Las variables <code>DB_HOST</code> a <code>DB_SCHEMA</code> configuran el <code>DataSource</code> de PostgreSQL; <code>PORT</code> indica dónde escucha Express. El contenedor conecta directamente <code>TypeOrmLoanRepository</code>; ya no se selecciona un repositorio con <code>DB_TYPE</code>. Sustituye la clave de ejemplo por la contraseña local de PostgreSQL y comprueba que el servicio de base de datos, la base <code>controllabs</code> y su esquema estén disponibles. El archivo <code>.env</code> ya está excluido por <code>.gitignore</code>: no compartas ni subas sus credenciales. Para este ejercicio usa <code>NODE_ENV=development</code>; el esquema se gestiona mediante SQL/migraciones, no con sincronización automática al arrancar.</p>
               </article>
 
-              <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 2.</span> Definir el error de aplicación/dominio</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/errors/domain.error.ts</code> — crea este archivo primero. El servicio debe poder expresar “no existe” o “estado incompatible” sin importar <code>Response</code>, códigos HTTP ni Express. El error lleva un código estable; el middleware global decide después qué HTTP enviar.</p>
+                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 2.</span> Definir tipos compartidos, entidades y DataSource</h5>
+                          <p class="font-sans text-xs text-slate-600">Para este caso de uso, primero se crean los tipos compartidos y todas las entidades involucradas en préstamos: ambiente, usuario y préstamo. Así las entidades no dependen de los repositorios. Los módulos de equipos e incidentes tendrán sus entidades cuando se implementen esos casos de uso.</p>
+                            <pre class="bg-slate-950 text-sky-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">// src/models/loan.types.ts
+export type LoanStatus = 'PENDIENTE_APROBACION' | 'APROBADO_Y_FIRMADO';
+export type RoomStatus = 'OPERATIVO' | 'MANTENIMIENTO' | 'INACTIVO';
+export type UserRole = 'ADMIN' | 'GUARDA' | 'INSTRUCTOR';</pre>
+                            <p class="font-sans text-xs text-slate-600">Luego crea las entidades relacionadas <code>RoomEntity</code> y <code>UserEntity</code>. <code>LoanEntity</code> las utiliza para declarar las relaciones <code>ManyToOne</code>.</p>
+                            <pre class="bg-slate-950 text-sky-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">// src/entities/room.entity.ts
+import { Column, Entity, PrimaryColumn } from 'typeorm';
+import type { RoomStatus } from '../models/loan.types';
+
+@Entity({ name: 'rooms' })
+export class RoomEntity {
+  @PrimaryColumn({ type: 'uuid', name: 'id' })
+  id!: string;
+
+  @Column({ type: 'varchar', length: 100, name: 'nombre' })
+  nombre!: string;
+
+  @Column({ type: 'varchar', length: 50, name: 'bloque' })
+  bloque!: string;
+
+  @Column({ type: 'int', name: 'capacidad_pcs' })
+  capacidadPcs!: number;
+
+  @Column({ type: 'varchar', length: 20, name: 'estado' })
+  estado!: RoomStatus;
+}
+
+// src/entities/user.entity.ts
+import { Column, Entity, PrimaryColumn } from 'typeorm';
+import type { UserRole } from '../models/loan.types';
+
+@Entity({ name: 'users' })
+export class UserEntity {
+  @PrimaryColumn({ type: 'uuid', name: 'id' })
+  id!: string;
+
+  @Column({ type: 'varchar', length: 150, name: 'nombre' })
+  nombre!: string;
+
+  @Column({ type: 'varchar', length: 20, name: 'rol' })
+  rol!: UserRole;
+}</pre>
+                            <p class="font-sans text-xs text-slate-600">Luego crea <code>src/entities/loan.entity.ts</code>. Las propiedades <code>room</code>, <code>instructor</code> y <code>guarda</code> serán objetos relacionados, no UUID planos.</p>
+                            <pre class="bg-slate-950 text-sky-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn
+} from 'typeorm';
+import type { LoanStatus } from '../models/loan.types';
+import { RoomEntity } from './room.entity';
+import { UserEntity } from './user.entity';
+
+@Entity({ name: 'loans' })
+export class LoanEntity {
+  @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
+  id!: number;
+
+  @ManyToOne(() =&gt; RoomEntity, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'room_id', referencedColumnName: 'id' })
+  room!: RoomEntity;
+
+  @ManyToOne(() =&gt; UserEntity, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'instructor_id', referencedColumnName: 'id' })
+  instructor!: UserEntity;
+
+  @ManyToOne(() =&gt; UserEntity, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'guarda_id', referencedColumnName: 'id' })
+  guarda!: UserEntity;
+
+  @Column({ type: 'int', name: 'numero_pc' })
+  numeroPc!: number;
+
+  @Column({ type: 'varchar', length: 24, name: 'estado' })
+  estado!: LoanStatus;
+
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
+  createdAt!: Date;
+
+  @Column({ type: 'timestamptz', name: 'accepted_at', nullable: true })
+  acceptedAt!: Date | null;
+}</pre>
+                          <div class="bg-sky-50 border border-sky-200 p-3 rounded-lg font-sans text-[11px] text-sky-950 space-y-2">
+                            <p><strong>Cómo leer los decoradores:</strong></p>
+                            <ul class="list-disc list-inside space-y-1">
+                              <li><code>@Entity({ name: 'loans' })</code> marca <code>LoanEntity</code> como entidad ORM y nombra la tabla a la que corresponde.</li>
+                              <li><code>@PrimaryGeneratedColumn</code> identifica una clave primaria cuyo valor genera PostgreSQL; aquí <code>type: 'bigint'</code> y <code>name: 'id'</code> hacen explícita la correspondencia con <code>loans.id</code>.</li>
+                              <li><code>@Column</code> indica que una propiedad se guarda como columna normal. <code>type</code> establece el tipo SQL; <code>name</code> evita asumir que camelCase se convierte automáticamente a snake_case; <code>length: 24</code> limita <code>estado</code> como en el esquema.</li>
+                              <li><code>@ManyToOne</code> define que cada préstamo tiene un ambiente y dos usuarios; una misma sala o usuario puede aparecer en muchos préstamos. <code>@JoinColumn</code> conecta cada propiedad con la columna FK correcta.</li>
+                              <li><code>nullable: false</code> y <code>onDelete: 'RESTRICT'</code> reflejan la obligatoriedad y la política de borrado de las FKs del SQL. No crean una consulta ni verifican el rol del usuario.</li>
+                              <li><code>@CreateDateColumn</code> señala la fecha de creación que TypeORM completa al guardar un registro; <code>timestamptz</code> corresponde a una fecha con zona horaria en PostgreSQL.</li>
+                              <li><code>nullable: true</code> permite que <code>accepted_at</code> sea <code>NULL</code> hasta que se acepte el préstamo. El tipo TypeScript <code>Date | null</code> refleja los dos resultados posibles.</li>
+                              <li><code>LoanStatus</code> es un tipo de TypeScript que limita los estados usados por el código, mientras que la restricción <code>CHECK</code> de la tabla protege los datos en PostgreSQL.</li>
+                            </ul>
+                          </div>
+                          <p class="font-sans text-xs text-slate-600">Después registra las tres entidades en <code>src/config/data-source.ts</code>: <code>entities: [LoanEntity, RoomEntity, UserEntity]</code>. Luego, en <code>server.ts</code>, ejecuta <code>initializeDatabase()</code> antes de <code>app.listen</code> para que la conexión y metadata estén listas antes de recibir peticiones.</p>
+                          <p class="font-sans text-[11px] text-slate-600">Compara nombres y tipos con <code>bd.sql</code>. Las FKs siguen existiendo y son aplicadas por PostgreSQL; <code>@ManyToOne</code> y <code>@JoinColumn</code> permiten que TypeORM las recorra para formar objetos. La FK confirma que el usuario existe, pero una regla de servicio aparte debe comprobar que su rol corresponda con instructor o guarda.</p>
+                          </article>
+
+                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 3.</span> Definir el contrato del repositorio</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/repositories/loan.repository.ts</code> declara las operaciones que necesita el servicio. Su modelo de salida ya expresa relaciones anidadas; así el contrato no obliga al controller a trabajar con UUID planos.</p>
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">import { ICreateLoanDTO } from '../dtos/loan.dto';
+import type { LoanStatus, RoomStatus, UserRole } from '../models/loan.types';
+
+export interface LoanRoom {
+  id: string;
+  nombre: string;
+  bloque: string;
+  capacidadPcs: number;
+  estado: RoomStatus;
+}
+
+export interface LoanUser {
+  id: string;
+  nombre: string;
+  rol: UserRole;
+}
+
+export interface Loan {
+  id: number;
+  room: LoanRoom;
+  instructor: LoanUser;
+  guarda: LoanUser;
+  numeroPc: number;
+  estado: LoanStatus;
+  createdAt: string;
+  acceptedAt: string | null;
+}
+
+export interface LoanFilters {
+  roomId?: string;
+}
+
+export interface LoanRepository {
+  create(input: ICreateLoanDTO): Promise&lt;Loan&gt;;
+  findAll(filters?: LoanFilters): Promise&lt;Loan[]&gt;;
+  findById(id: number): Promise&lt;Loan | null&gt;;
+  updateStatus(
+    id: number,
+    expectedStatus: LoanStatus,
+    status: LoanStatus
+  ): Promise&lt;Loan | null&gt;;
+}</pre>
+                            <p class="font-sans text-[11px] text-slate-600">El DTO de creación conserva <code>roomId</code>, <code>instructorId</code> y <code>guardaId</code> porque el cliente envía referencias. El modelo de respuesta devuelve <code>room</code>, <code>instructor</code> y <code>guarda</code> como objetos ya cargados.</p>
+                        </article>
+
+                          <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 4.</span> Implementar persistencia real con TypeORM</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/repositories/typeorm-loan.repository.ts</code> — implementa el contrato del paso 3 con TypeORM y PostgreSQL. Al crear, convierte los IDs del DTO en referencias <code>room: { id }</code>, <code>instructor: { id }</code> y <code>guarda: { id }</code>. Al leer, ejecuta <code>leftJoinAndSelect</code> para devolver los objetos relacionados dentro de cada préstamo.</p>
+                            <div class="bg-slate-950 text-emerald-300 p-4 rounded-xl font-mono text-[11px] leading-relaxed">POST /loans → servicio → TypeOrmLoanRepository.create
+                                 → entidad LoanEntity → INSERT en la tabla loans
+                               → devuelve préstamo + ambiente + instructor + guarda</div>
+                             <pre class="bg-slate-950 text-sky-300 p-3 rounded-xl overflow-x-auto text-[11px] leading-relaxed">{
+            "id": 12,
+            "room": { "id": "...", "nombre": "Sala 301", "bloque": "Bloque 3" },
+            "instructor": { "id": "...", "nombre": "Diana Instructor", "rol": "INSTRUCTOR" },
+            "guarda": { "id": "...", "nombre": "Alberto Guarda", "rol": "GUARDA" },
+            "numeroPc": 2,
+            "estado": "PENDIENTE_APROBACION"
+          }</pre>
+                             <p class="font-sans text-[11px] text-slate-600">El adaptador no hace lógica de negocio ni responde HTTP. Persiste las FK mediante PostgreSQL, carga las entidades relacionadas y entrega un objeto de dominio con relaciones anidadas.</p>
+                        </article>
+
+                        <div class="bg-sky-50 border border-sky-200 p-4 rounded-xl">
+                            <h5 class="font-sans font-bold text-sm text-sky-950">Parte 2. Integrar persistencia con la API</h5>
+                            <p class="font-sans text-xs text-sky-900 mt-1">Con las entidades y el adaptador listos, conecta el contrato con reglas de negocio, errores HTTP y rutas. En esta parte se implementan los servicios y se ajustan los controllers.</p>
+                        </div>
+
+                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 5.</span> Definir el error de aplicación/dominio</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/errors/domain.error.ts</code> permite que el servicio exprese “no existe” o “estado incompatible” sin importar <code>Response</code>, códigos HTTP ni Express. El error lleva un código estable; el middleware global decide después qué HTTP enviar.</p>
                             <pre class="bg-slate-950 text-purple-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">export type DomainErrorCode = 'VALIDATION_ERROR' | 'NOT_FOUND' | 'CONFLICT';
 
 export class DomainError extends Error {
@@ -970,44 +1188,7 @@ export class DomainError extends Error {
     this.name = 'DomainError';
   }
 }</pre>
-                            <p class="font-sans text-[11px] text-slate-600"><code>VALIDATION_ERROR</code> representa una regla de entrada/aplicación incumplida; <code>NOT_FOUND</code>, una entidad que no existe; <code>CONFLICT</code>, una operación válida en forma pero imposible para el estado actual. No es un error de base de datos ni una respuesta HTTP por sí mismo.</p>
-                        </article>
-
-                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 3.</span> Crear el contrato del repositorio</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/repositories/loan.repository.ts</code> — define qué operaciones necesita el servicio, sin decidir el motor de persistencia. Importa el DTO existente y declara el modelo que las operaciones retornan.</p>
-                            <ul class="font-sans text-[11px] text-slate-600 list-disc list-inside space-y-1">
-                                <li><code>Loan</code> representa un préstamo ya creado, incluyendo id, estado y marcas de tiempo.</li>
-                                <li><code>LoanStatus</code> limita estados a los valores admitidos: evita actualizar con cualquier texto arbitrario.</li>
-                                <li><code>findById</code> devuelve <code>null</code> cuando no existe: la ausencia es un resultado esperado, no un fallo inesperado.</li>
-                                <li><code>expectedStatus</code> en <code>updateStatus</code> hace una actualización condicional: solo acepta si todavía está pendiente.</li>
-                            </ul>
-                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">export interface LoanRepository {
-  create(input: ICreateLoanDTO): Promise&lt;Loan&gt;;
-  findAll(filters?: LoanFilters): Promise&lt;Loan[]&gt;;
-  findById(id: number): Promise&lt;Loan | null&gt;;
-  updateStatus(
-    id: number,
-    expectedStatus: LoanStatus,
-    status: LoanStatus
-  ): Promise&lt;Loan | null&gt;;
-}</pre>
-                            <p class="font-sans text-[11px] text-slate-600">El contrato hace posible cambiar el adaptador concreto sin reescribir los casos de uso. La interfaz no abre una conexión ni guarda datos por sí sola.</p>
-                        </article>
-
-                        <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 4.</span> Crear la entidad y configurar el DataSource</h5>
-                            <p class="font-sans text-xs text-slate-600">Crea <code>src/entities/loan.entity.ts</code> para describir la tabla <code>loans</code> con <code>@Entity</code>, <code>@PrimaryGeneratedColumn</code> y los decoradores <code>@Column</code>. Después crea <code>src/config/data-source.ts</code> con <code>new DataSource({ type: 'postgres', ... })</code>, las variables del paso 1 y <code>entities: [LoanEntity]</code>. En <code>server.ts</code>, llama a <code>initializeDatabase()</code> antes de <code>app.listen</code>, para no aceptar peticiones hasta que la conexión se inicialice.</p>
-                            <p class="font-sans text-[11px] text-slate-600">Compara los metadatos de la entidad con <code>bd.sql</code>: declara explícitamente nombres como <code>room_id</code> y <code>created_at</code>, y revisa que el tipo de la clave primaria corresponda con el <code>BIGINT</code> del esquema. La explicación detallada de cada decorador y del ciclo de conexión está en la sección anterior. No avances hasta que entidad y esquema representen las mismas columnas.</p>
-                          </article>
-
-                          <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 5.</span> Implementar persistencia real con TypeORM</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/repositories/typeorm-loan.repository.ts</code> — implementa el contrato del paso 3 con TypeORM y PostgreSQL. El servicio sigue recibiendo el mismo contrato <code>LoanRepository</code>; el adaptador utiliza la entidad del paso 4 para leer y guardar filas.</p>
-                            <div class="bg-slate-950 text-emerald-300 p-4 rounded-xl font-mono text-[11px] leading-relaxed">POST /loans → servicio → TypeOrmLoanRepository.create
-                                 → entidad LoanEntity → INSERT en la tabla loans
-                               → devuelve el préstamo con estado y fechas</div>
-                            <p class="font-sans text-[11px] text-slate-600">El adaptador no hace lógica de negocio ni responde HTTP. Persiste mediante PostgreSQL y convierte el resultado a objetos del dominio sin acoplar el servicio o el controller a TypeORM.</p>
+                            <p class="font-sans text-[11px] text-slate-600"><code>VALIDATION_ERROR</code> representa una regla incumplida; <code>NOT_FOUND</code>, una entidad que no existe; <code>CONFLICT</code>, una operación incompatible con el estado actual. No es un error de base de datos ni una respuesta HTTP por sí mismo.</p>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
@@ -1041,7 +1222,7 @@ async getLoanDetail(id: number): Promise&lt;Loan&gt; {
                             <p class="font-sans text-[11px] text-slate-600"><strong>Qué hace cada parte:</strong> el constructor recibe el repositorio, lo que permite sustituirlo sin cambiar el servicio. <code>createLoan</code> valida cantidad positiva, normaliza los UUID de las referencias y delega la persistencia. <code>getLoanDetail</code> rechaza ids no enteros/positivos mediante <code>validateId</code>, busca por id y traduce <code>null</code> a <code>NOT_FOUND</code>. El <code>throw</code> detiene el caso de uso; no construye una respuesta HTTP.</p>
                             <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg font-sans text-[11px] text-amber-950 space-y-1">
                                 <p><strong>Separación con el middleware:</strong> <code>validateLoanPayload</code> valida la forma y el formato UUID del JSON. El servicio aplica la regla del caso de uso: cantidad positiva. Además, valida que el filtro de búsqueda sea un UUID válido.</p>
-                                <p><strong>Límite actual:</strong> las reglas de existencia de FK requieren repositorios de ambientes y usuarios; el JSON solo persiste préstamos y no valida esas referencias. El modelo ya no representa activos individuales prestados.</p>
+                                <p><strong>Límite actual:</strong> PostgreSQL rechaza UUID que no existan en las tablas referenciadas, pero el servicio no consulta esos catálogos ni verifica que el rol sea instructor/guarda. Esa política debe añadirse como regla de negocio; el modelo tampoco representa activos individuales prestados.</p>
                             </div>
                             <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-lg font-sans text-[11px] text-emerald-950 space-y-2">
                                 <p class="font-bold">Reglas de creación que sí ejecuta el servicio hoy</p>
@@ -1076,7 +1257,7 @@ throw new DomainError('CONFLICT', 'Ya fue aceptado.');</pre>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
                             <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 8.</span> Conectar las dependencias en un solo lugar</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/container.ts</code> es el <strong>punto de composición</strong> (también llamado composition root): el lugar que decide qué implementaciones concretas usa la aplicación y conecta sus dependencias. No es un contenedor de datos, no guarda préstamos y no contiene reglas de negocio. Con <code>DB_TYPE=postgres</code>, crea <code>TypeOrmLoanRepository</code> y lo inyecta en el servicio bajo el contrato <code>LoanRepository</code>.</p>
+                            <p class="font-sans text-xs text-slate-600"><code>src/container.ts</code> es el <strong>punto de composición</strong> (también llamado composition root): el lugar que conecta las implementaciones concretas con sus dependencias. En esta solución instancia directamente <code>TypeOrmLoanRepository</code> y lo inyecta en el servicio bajo el contrato <code>LoanRepository</code>; la configuración de PostgreSQL vive en el <code>DataSource</code>.</p>
                             <pre class="bg-slate-950 text-amber-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">import { LoanService } from './services/loan.service';
 import { TypeOrmLoanRepository } from './repositories/typeorm-loan.repository';
 
@@ -1338,7 +1519,7 @@ Cuerpo JSON malformado → 400; GET /__test/error (desarrollo) → 500</pre>
                 create: {
                     http: 201,
                     pipeline: ["requestLogger", "validateLoanPayload → next()", "LoanController.createLoan", "LoanService.createLoan", "TypeOrmLoanRepository.create"],
-                    result: { success: true, message: "Préstamo registrado correctamente.", data: { id: 1, roomId: "d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44", instructorId: "c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33", guardaId: "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22", numeroPc: 1, estado: "PENDIENTE_APROBACION" } }
+                    result: { success: true, message: "Préstamo registrado correctamente.", data: { id: 1, room: { id: "d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44", nombre: "Sala 301", bloque: "Bloque 3", capacidadPcs: 30, estado: "OPERATIVO" }, instructor: { id: "c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33", nombre: "Diana Instructor", rol: "INSTRUCTOR" }, guarda: { id: "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22", nombre: "Alberto Guarda", rol: "GUARDA" }, numeroPc: 1, estado: "PENDIENTE_APROBACION" } }
                 },
                 rule: {
                     http: 400,

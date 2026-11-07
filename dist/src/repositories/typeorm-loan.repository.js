@@ -10,17 +10,24 @@ class TypeOrmLoanRepository {
     }
     async create(input) {
         const entity = this.repository.create({
-            ...input,
+            room: { id: input.roomId },
+            instructor: { id: input.instructorId },
+            guarda: { id: input.guardaId },
+            numeroPc: input.numeroPc,
             estado: 'PENDIENTE_APROBACION',
             acceptedAt: null
         });
         const saved = await this.repository.save(entity);
-        return this.toDomain(saved);
+        const savedWithRelations = await this.findEntityById(Number(saved.id));
+        if (!savedWithRelations) {
+            throw new Error('No fue posible recuperar el préstamo recién creado.');
+        }
+        return this.toDomain(savedWithRelations);
     }
     async findAll(filters = {}) {
-        const query = this.repository.createQueryBuilder('loan');
+        const query = this.withRelations();
         if (filters.roomId) {
-            query.where('LOWER(CAST(loan.roomId AS text)) = LOWER(CAST(:roomId AS text))', {
+            query.andWhere('LOWER(CAST(room.id AS text)) = LOWER(CAST(:roomId AS text))', {
                 roomId: filters.roomId
             });
         }
@@ -28,25 +35,52 @@ class TypeOrmLoanRepository {
         return entities.map((entity) => this.toDomain(entity));
     }
     async findById(id) {
-        const entity = await this.repository.findOne({ where: { id } });
+        const entity = await this.findEntityById(id);
         return entity ? this.toDomain(entity) : null;
     }
     async updateStatus(id, expectedStatus, status) {
-        const entity = await this.repository.findOne({ where: { id } });
+        const entity = await this.findEntityById(id);
         if (!entity || entity.estado !== expectedStatus) {
             return null;
         }
         entity.estado = status;
         entity.acceptedAt = status === 'APROBADO_Y_FIRMADO' ? new Date() : entity.acceptedAt;
         const saved = await this.repository.save(entity);
-        return this.toDomain(saved);
+        const savedWithRelations = await this.findEntityById(Number(saved.id));
+        return savedWithRelations ? this.toDomain(savedWithRelations) : null;
+    }
+    withRelations() {
+        return this.repository
+            .createQueryBuilder('loan')
+            .leftJoinAndSelect('loan.room', 'room')
+            .leftJoinAndSelect('loan.instructor', 'instructor')
+            .leftJoinAndSelect('loan.guarda', 'guarda');
+    }
+    async findEntityById(id) {
+        return this.withRelations()
+            .where('loan.id = :id', { id })
+            .getOne();
     }
     toDomain(entity) {
         return {
             id: Number(entity.id),
-            roomId: entity.roomId,
-            instructorId: entity.instructorId,
-            guardaId: entity.guardaId,
+            room: {
+                id: entity.room.id,
+                nombre: entity.room.nombre,
+                bloque: entity.room.bloque,
+                capacidadPcs: entity.room.capacidadPcs,
+                estado: entity.room.estado
+            },
+            instructor: {
+                id: entity.instructor.id,
+                nombre: entity.instructor.nombre,
+                rol: entity.instructor.rol
+            },
+            guarda: {
+                id: entity.guarda.id,
+                nombre: entity.guarda.nombre,
+                rol: entity.guarda.rol
+            },
             numeroPc: entity.numeroPc,
             estado: entity.estado,
             createdAt: entity.createdAt.toISOString(),

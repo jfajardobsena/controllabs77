@@ -11,11 +11,13 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LoanEntity = void 0;
 const typeorm_1 = require("typeorm");
+const room_entity_1 = require("./room.entity");
+const user_entity_1 = require("./user.entity");
 let LoanEntity = class LoanEntity {
     id;
-    roomId;
-    instructorId;
-    guardaId;
+    room;
+    instructor;
+    guarda;
     numeroPc;
     estado;
     createdAt;
@@ -27,17 +29,20 @@ __decorate([
     __metadata("design:type", Number)
 ], LoanEntity.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'uuid', name: 'room_id' }),
-    __metadata("design:type", String)
-], LoanEntity.prototype, "roomId", void 0);
+    (0, typeorm_1.ManyToOne)(() => room_entity_1.RoomEntity, { nullable: false, onDelete: 'RESTRICT' }),
+    (0, typeorm_1.JoinColumn)({ name: 'room_id', referencedColumnName: 'id' }),
+    __metadata("design:type", room_entity_1.RoomEntity)
+], LoanEntity.prototype, "room", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'uuid', name: 'instructor_id' }),
-    __metadata("design:type", String)
-], LoanEntity.prototype, "instructorId", void 0);
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.UserEntity, { nullable: false, onDelete: 'RESTRICT' }),
+    (0, typeorm_1.JoinColumn)({ name: 'instructor_id', referencedColumnName: 'id' }),
+    __metadata("design:type", user_entity_1.UserEntity)
+], LoanEntity.prototype, "instructor", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'uuid', name: 'guarda_id' }),
-    __metadata("design:type", String)
-], LoanEntity.prototype, "guardaId", void 0);
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.UserEntity, { nullable: false, onDelete: 'RESTRICT' }),
+    (0, typeorm_1.JoinColumn)({ name: 'guarda_id', referencedColumnName: 'id' }),
+    __metadata("design:type", user_entity_1.UserEntity)
+], LoanEntity.prototype, "guarda", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'int', name: 'numero_pc' }),
     __metadata("design:type", Number)

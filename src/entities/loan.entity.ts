@@ -2,23 +2,30 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn
 } from 'typeorm';
-import { LoanStatus } from '../repositories/loan.repository';
+import type { LoanStatus } from '../models/loan.types';
+import { RoomEntity } from './room.entity';
+import { UserEntity } from './user.entity';
 
 @Entity({ name: 'loans' })
 export class LoanEntity {
   @PrimaryGeneratedColumn({ type: 'bigint', name: 'id' })
   id!: number;
 
-  @Column({ type: 'uuid', name: 'room_id' })
-  roomId!: string;
+  @ManyToOne(() => RoomEntity, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'room_id', referencedColumnName: 'id' })
+  room!: RoomEntity;
 
-  @Column({ type: 'uuid', name: 'instructor_id' })
-  instructorId!: string;
+  @ManyToOne(() => UserEntity, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'instructor_id', referencedColumnName: 'id' })
+  instructor!: UserEntity;
 
-  @Column({ type: 'uuid', name: 'guarda_id' })
-  guardaId!: string;
+  @ManyToOne(() => UserEntity, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'guarda_id', referencedColumnName: 'id' })
+  guarda!: UserEntity;
 
   @Column({ type: 'int', name: 'numero_pc' })
   numeroPc!: number;

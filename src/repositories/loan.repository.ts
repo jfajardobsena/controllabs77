@@ -1,9 +1,28 @@
 import { ICreateLoanDTO } from '../dtos/loan.dto';
+import type { LoanStatus, RoomStatus, UserRole } from '../models/loan.types';
 
-export type LoanStatus = 'PENDIENTE_APROBACION' | 'APROBADO_Y_FIRMADO';
+export type { LoanStatus } from '../models/loan.types';
 
-export interface Loan extends ICreateLoanDTO {
+export interface LoanRoom {
+  id: string;
+  nombre: string;
+  bloque: string;
+  capacidadPcs: number;
+  estado: RoomStatus;
+}
+
+export interface LoanUser {
+  id: string;
+  nombre: string;
+  rol: UserRole;
+}
+
+export interface Loan {
   id: number;
+  room: LoanRoom;
+  instructor: LoanUser;
+  guarda: LoanUser;
+  numeroPc: number;
   estado: LoanStatus;
   createdAt: string;
   acceptedAt: string | null;
