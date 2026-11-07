@@ -92,13 +92,13 @@
                     <div class="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl space-y-3">
                         <span class="bg-sena-green text-white px-2.5 py-1 rounded font-bold">2. Service (Reglas de Negocio)</span>
                         <p class="text-slate-700 font-sans leading-relaxed">
-                            Aplica reglas del préstamo (cantidad positiva y transición de estado). No recibe <code class="font-mono">Request</code>/<code class="font-mono">Response</code> ni conoce Express.
+                        Aplica reglas del préstamo (cantidad positiva y transición de estado). No recibe <code class="font-mono">Request</code>/<code class="font-mono">Response</code>, no conoce Express y no se encarga de responder HTTP directamente. Su función es validar la lógica del dominio y lanzar <code class="font-mono">DomainError</code> para que la capa HTTP lo procese más adelante.
                         </p>
                     </div>
                     <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
                         <span class="bg-purple-600 text-white px-2.5 py-1 rounded font-bold">3. Repository / DB</span>
                         <p class="text-slate-600 font-sans leading-relaxed">
-                            Implementa el contrato tipado del servicio. En esta sesión se usa memoria temporal; PostgreSQL queda como proyección, no como una conexión ya configurada.
+                            Implementa el contrato tipado del servicio. El repositorio usa TypeORM sobre PostgreSQL, así el servicio sigue siendo independiente del motor de datos y solo conoce el contrato del dominio.
                         </p>
                     </div>
                 </div>
@@ -118,7 +118,8 @@
                     </div>
 
                     <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 font-mono text-xs text-emerald-300 overflow-x-auto min-h-[140px]" id="service-output">
-                        // Seleccione un escenario para ver qué capa lo procesa y qué respuesta HTTP resulta...
+                      // El servicio valida la lógica de negocio y lanza DomainError.
+                      // El controller captura la excepción y la entrega al middleware global.
                     </div>
                 </div>
             </div>
@@ -197,8 +198,8 @@ CREATE INDEX idx_loans_room_created ON loans(room_id, created_at DESC);
 CREATE INDEX idx_incidents_equipment_status ON incidents(equipment_id, estado);
 -- El panel (quinto módulo funcional) se calcula con consultas/vistas
 -- sobre usuarios, ambientes, inventario, préstamos y novedades; no se duplica.</code></pre>
-                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 text-xs text-amber-950 space-y-2">
-                    <p><strong>DTO de creación alineado por significado, no por el nombre SQL:</strong> el contrato HTTP usa camelCase y el futuro repositorio PostgreSQL traducirá estos campos a snake_case. La implementación actual guarda préstamos en memoria y sus UUID no se resuelven ni se comprueba que existan en catálogos. <code>guardaId</code> es provisional para la práctica; con autenticación debe derivarse de la identidad verificada, no confiar en el valor enviado por el cliente. El esquema definitivo no incluye una relación préstamo-equipo: el préstamo conserva la cantidad, pero no identifica activos específicos ni registra su devolución individual.</p>
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 text-xs text-amber-950 space-y-3">
+                    <p><strong>DTO de creación alineado por significado, no por el nombre SQL:</strong> el contrato HTTP usa camelCase y define los datos que el cliente puede enviar. El servicio valida reglas del negocio y el repositorio entrega esos datos a TypeORM para persistirlos. El nombre real de cada columna depende de los metadatos de la entidad o de una estrategia de nombres; no debe suponerse que TypeORM convierte automáticamente camelCase a snake_case. <code>guardaId</code> sigue siendo un dato de práctica para la sesión; con autenticación real debe derivarse de la identidad verificada, no confiar en un valor enviado por el cliente.</p>
                     <div class="overflow-x-auto">
                         <table class="w-full text-[11px] text-left border-collapse">
                             <thead><tr class="bg-amber-100"><th class="p-2">ICreateLoanDTO (API)</th><th class="p-2">Columna SQL</th><th class="p-2">Por qué no se envía en el DTO de creación</th></tr></thead>
@@ -211,7 +212,63 @@ CREATE INDEX idx_incidents_equipment_status ON incidents(equipment_id, estado);
                             </tbody>
                         </table>
                     </div>
-                    <p>La implementación actual guarda los préstamos en un <code>Map</code> del proceso; se pierden al reiniciar el servidor. El DDL es una proyección para una integración posterior con PostgreSQL, no una conexión ya configurada.</p>
+                    <section class="border-t border-amber-200 pt-4 space-y-4">
+                      <div class="space-y-2">
+                        <h4 class="font-bold text-base">TypeORM paso a paso: del objeto TypeScript a PostgreSQL</h4>
+                        <p class="text-xs leading-relaxed">Un ORM (Object-Relational Mapper) conecta dos modelos: los objetos y clases del programa, y las tablas y filas de una base de datos relacional. TypeORM lee los metadatos de las entidades y ofrece APIs de TypeScript para consultar y guardar datos. No elimina SQL: lo genera o lo construye a partir de las operaciones solicitadas y PostgreSQL es quien ejecuta esas consultas.</p>
+                      </div>
+
+                      <div class="space-y-2">
+                        <h5 class="font-bold text-sm">1. El DataSource configura la conexión</h5>
+                        <p class="text-xs leading-relaxed"><code>src/config/data-source.ts</code> crea <code>AppDataSource</code> con el driver <code>postgres</code>, los datos de conexión del entorno, el esquema y la lista de entidades conocidas. Al iniciar, <code>server.ts</code> llama a <code>initializeDatabase()</code>; TypeORM establece la conexión y prepara sus metadatos antes de que Express empiece a escuchar peticiones. Si la conexión falla, el servidor no arranca.</p>
+                        <pre class="bg-slate-950 text-emerald-300 p-3 rounded-xl overflow-x-auto text-[11px] leading-relaxed">export const AppDataSource = new DataSource({
+            type: 'postgres',
+            host: process.env.DB_HOST ?? 'localhost',
+            database: process.env.DB_NAME ?? 'controllabs',
+            entities: [LoanEntity]
+          });</pre>
+                        <p class="text-[11px] leading-relaxed">El <code>DataSource</code> es la puerta de entrada a la configuración de TypeORM. De él se obtiene el repositorio asociado a una entidad; no es una entidad ni guarda por sí mismo cada préstamo.</p>
+                      </div>
+
+                      <div class="space-y-2">
+                        <h5 class="font-bold text-sm">2. La entidad describe el modelo persistente</h5>
+                        <p class="text-xs leading-relaxed"><code>LoanEntity</code> es una clase con decoradores que TypeORM interpreta como metadatos. <code>@Entity({ name: 'loans' })</code> indica la tabla. <code>@PrimaryGeneratedColumn()</code> marca la clave primaria generada; <code>@Column({ type: 'uuid' })</code> y los demás decoradores describen tipos; <code>@CreateDateColumn</code> marca una fecha de creación administrada por TypeORM. Estas anotaciones describen cómo leer y escribir filas; no contienen las reglas del caso de uso.</p>
+                        <p class="text-xs leading-relaxed">En esta entidad, los identificadores UUID se guardan como propiedades escalares. No hay decoradores de relación como <code>@ManyToOne</code> ni <code>@JoinColumn</code>; por tanto, el ORM no modela aquí objetos relacionados de ambiente o usuario. Las claves foráneas y restricciones definidas en PostgreSQL siguen siendo responsabilidad del esquema de la base de datos.</p>
+                      </div>
+
+                      <div class="space-y-2">
+                        <h5 class="font-bold text-sm">3. El repositorio de TypeORM ejecuta las operaciones</h5>
+                        <p class="text-xs leading-relaxed"><code>TypeOrmLoanRepository</code> implementa el contrato <code>LoanRepository</code>. En el constructor obtiene un <code>Repository&lt;LoanEntity&gt;</code> desde <code>AppDataSource</code>. Ese repositorio especializado es la API de TypeORM para crear instancias, buscar filas y persistir cambios de la entidad.</p>
+                        <p class="text-xs leading-relaxed">Al crear un préstamo, <code>repository.create(...)</code> construye una instancia de <code>LoanEntity</code> en memoria; todavía no realiza una inserción. Después, <code>repository.save(entity)</code> persiste la instancia y espera el resultado de PostgreSQL. El adaptador establece el estado inicial, deja <code>acceptedAt</code> vacío y finalmente convierte la entidad guardada al objeto de dominio que espera el resto de la aplicación.</p>
+                        <pre class="bg-slate-950 text-emerald-300 p-3 rounded-xl overflow-x-auto text-[11px] leading-relaxed">const entity = this.repository.create({
+            ...input,
+            estado: 'PENDIENTE_APROBACION',
+            acceptedAt: null
+          });
+          const saved = await this.repository.save(entity);
+          return this.toDomain(saved);</pre>
+                        <p class="text-xs leading-relaxed">Para aceptar un préstamo, el adaptador busca la fila, comprueba que su estado sea el esperado, cambia <code>estado</code> y establece <code>acceptedAt</code>; luego usa <code>save</code>. Si no existe o ya cambió de estado, devuelve <code>null</code> y el servicio decide si corresponde <code>NOT_FOUND</code> o <code>CONFLICT</code>. En esta versión la lectura y el guardado son operaciones separadas; si varias solicitudes pueden aceptar el mismo préstamo simultáneamente, conviene realizar la transición con una actualización condicional atómica o una transacción.</p>
+                        <p class="text-xs leading-relaxed">Las lecturas usan <code>findOne</code> para buscar por identificador y <code>createQueryBuilder</code> para construir la consulta filtrada por ambiente. El parámetro <code>:roomId</code> se entrega separado del texto de la consulta, en vez de concatenarse como SQL; así TypeORM puede parametrizar el valor. La conversión <code>toDomain</code> también normaliza las fechas a cadenas ISO, manteniendo el contrato del API independiente de la clase ORM.</p>
+                      </div>
+
+                      <div class="space-y-2">
+                        <h5 class="font-bold text-sm">4. La separación de capas conserva responsabilidades</h5>
+                        <ol class="list-decimal list-inside space-y-1 text-xs leading-relaxed">
+                          <li>El middleware comprueba la forma del JSON HTTP.</li>
+                          <li>El controller entrega los datos del request al servicio y traduce el resultado a una respuesta HTTP.</li>
+                          <li>El servicio valida reglas del dominio y solicita una operación mediante la interfaz <code>LoanRepository</code>.</li>
+                          <li>El adaptador TypeORM usa la entidad y PostgreSQL para leer o guardar datos.</li>
+                          <li>Los errores de negocio se representan con <code>DomainError</code>; los errores inesperados del motor se propagan al middleware global.</li>
+                        </ol>
+                        <p class="text-xs leading-relaxed">TypeORM no reemplaza al servicio, al DTO, a la validación HTTP ni a las restricciones de la base de datos. Por ejemplo, comprobar que <code>numeroPc</code> sea positivo es una regla del servicio; el <code>CHECK</code> de PostgreSQL es una segunda barrera de integridad para los datos persistidos.</p>
+                      </div>
+
+                      <div class="space-y-2">
+                        <h5 class="font-bold text-sm">5. Esquema y nombres de columnas: revisar antes de ejecutar</h5>
+                        <p class="text-xs leading-relaxed">En <code>data-source.ts</code>, <code>synchronize</code> está activado fuera de producción y desactivado en producción. En desarrollo, TypeORM puede crear o ajustar tablas a partir de los metadatos de las entidades; en producción debe usarse un esquema controlado, normalmente mediante migraciones. En esta configuración la lista de migraciones está vacía, así que no hay una migración de TypeORM que sincronice cambios.</p>
+                        <p class="text-xs leading-relaxed"><strong>Detalle concreto de esta implementación:</strong> las propiedades <code>roomId</code>, <code>instructorId</code>, <code>guardaId</code>, <code>numeroPc</code>, <code>createdAt</code> y <code>acceptedAt</code> no declaran <code>name</code> en sus decoradores, y el <code>DataSource</code> no configura una estrategia snake_case. Por defecto, TypeORM utiliza los nombres de las propiedades para las columnas, mientras que <code>bd.sql</code> define nombres como <code>room_id</code>, <code>numero_pc</code> y <code>created_at</code>. Además, el SQL define <code>id</code> como <code>BIGINT</code> y la entidad no especifica ese tipo en <code>@PrimaryGeneratedColumn()</code>. Antes de usar conjuntamente esa entidad con el esquema de <code>bd.sql</code>, hay que hacer coincidir explícitamente los nombres y tipos mediante las opciones de los decoradores o una estrategia de nombres, y comprobar la clave generada.</p>
+                      </div>
+                    </section>
                 </div>
             </div>
         </div>
@@ -356,10 +413,10 @@ CREATE INDEX idx_incidents_equipment_status ON incidents(equipment_id, estado);
                         <div class="bg-slate-950 text-emerald-200 p-4 rounded-xl font-mono text-[10px] leading-relaxed overflow-x-auto">Regla / capa / evidencia
 numeroPc es entero &gt; 0        → LoanService.createLoan → VALIDATION_ERROR (400)
 Datos HTTP con forma válida   → validateLoanPayload → 400 antes del servicio
-Estado inicial pendiente      → InMemoryLoanRepository.create
+Estado inicial pendiente      → TypeOrmLoanRepository.create
 Aceptar solo si está pendiente → repository.updateStatus(expectedStatus) → CONFLICT (409)
 Id inexistente                → LoanService.getLoanDetail / acceptLoan → NOT_FOUND (404)
-Ambiente/personas              → aún no verificable; falta consultar catálogos
+Ambiente/personas              → verificable desde SQL y relaciones FK
 Activos individuales           → no quedan asociados con el modelo actual</div>
                         <p class="text-[11px] text-slate-600"><strong>Archivos siguientes:</strong> faltan contratos/repositorios para validar ambiente y usuarios. Obtener guarda desde autenticación, no del body. Si el requisito es rastrear qué activo se presta o su devolución, habrá que diseñar explícitamente una relación alternativa; con este esquema no se puede hacer.</p>
                     </article>
@@ -424,7 +481,7 @@ Activos individuales           → no quedan asociados con el modelo actual</div
                         <li>Novedades: relacionarlas con activos y acordar si ciertos estados bloquean préstamos.</li>
                         <li>Dashboard: calcular indicadores a partir de los módulos anteriores y acordar sus definiciones.</li>
                     </ol>
-                    <p class="text-[11px] text-amber-950"><strong>En cada módulo:</strong> escribir primero contrato/DTO y reglas aceptadas; implementar repository y service; conectar controller/routes; probar 201/200, datos inválidos 400, recurso inexistente 404, duplicado o transición incompatible 409 y fallo inesperado 500. Al cambiar de memoria a PostgreSQL, migrar/crear esquema y adaptar el container sin mover reglas al controller.</p>
+                    <p class="text-[11px] text-amber-950"><strong>En cada módulo:</strong> escribir primero contrato/DTO y reglas aceptadas; implementar repository y service; conectar controller/routes; probar 201/200, datos inválidos 400, recurso inexistente 404, duplicado o transición incompatible 409 y fallo inesperado 500. Al cambiar a PostgreSQL, migrar/crear esquema y adaptar el container sin mover reglas al controller.</p>
                 </div>
             </section>
         </div>
@@ -441,7 +498,7 @@ Activos individuales           → no quedan asociados con el modelo actual</div
 
                 <div class="space-y-4">
                     <div class="bg-sky-950/60 p-4 rounded-xl text-[11px] text-sky-100 space-y-2">
-                        <p><strong>Contrato actualizado respecto a la Sesión 3:</strong> <code>POST /api/v1/loans</code> conserva la ruta, pero <code>ICreateLoanDTO</code> cambia de aula/nombres de personas a ids relacionados y cantidad: <code>roomId</code>, <code>instructorId</code>, <code>guardaId</code> y <code>numeroPc</code>. No incluye activos individuales porque el esquema definitivo no los vincula al préstamo. Reemplaza el DTO y el middleware por los bloques completos; la persistencia actual es temporal en memoria, no PostgreSQL. El contrato usa camelCase; el futuro repositorio PostgreSQL traduce los campos a columnas SQL snake_case.</p>
+                        <p><strong>Contrato actualizado respecto a la Sesión 3:</strong> <code>POST /api/v1/loans</code> conserva la ruta, pero <code>ICreateLoanDTO</code> cambia de aula/nombres de personas a ids relacionados y cantidad: <code>roomId</code>, <code>instructorId</code>, <code>guardaId</code> y <code>numeroPc</code>. No incluye activos individuales porque el esquema definitivo no los vincula al préstamo. El repositorio ya implementa persistencia real con TypeORM y PostgreSQL, sin alterar la capa de servicio ni el controlador. El contrato usa camelCase y el ORM se encarga de traducir esos nombres a la estructura relacional de la base de datos.</p>
                     </div>
 
                     <section class="bg-white text-slate-800 p-5 md:p-7 rounded-2xl space-y-5">
@@ -452,7 +509,7 @@ Activos individuales           → no quedan asociados con el modelo actual</div
 
                         <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl font-sans text-[11px] text-amber-950 space-y-1">
                                     <p><strong>Antes de pegar:</strong> conserva <code>src/middlewares/logger.middleware.ts</code>, <code>src/routes/index.ts</code> y el montaje de la aplicación de la sesión anterior. Como cambió el esquema de préstamos, reemplaza el DTO y su middleware con los ejemplos actualizados de abajo; sus rutas ya deben usar ese validador.</p>
-                                    <p>Los nuevos archivos son <code>src/errors/domain.error.ts</code>, <code>src/repositories/loan.repository.ts</code>, <code>src/repositories/in-memory-loan.repository.ts</code>, <code>src/services/loan.service.ts</code> y <code>src/container.ts</code>. Se reemplazan <code>src/controllers/loan.controller.ts</code> y <code>src/middlewares/errorHandler.middleware.ts</code>. Los datos se guardan temporalmente en memoria; no se instala ni configura PostgreSQL en esta sesión.</p>
+                                    <p>Los nuevos archivos son <code>src/errors/domain.error.ts</code>, <code>src/repositories/loan.repository.ts</code>, <code>src/repositories/typeorm-loan.repository.ts</code>, <code>src/config/data-source.ts</code>, <code>src/entities/loan.entity.ts</code>, <code>src/services/loan.service.ts</code> y <code>src/container.ts</code>. Se reemplazan <code>src/controllers/loan.controller.ts</code> y <code>src/middlewares/errorHandler.middleware.ts</code>. La persistencia ya es con PostgreSQL y TypeORM, sin depender de almacenamiento efímero dentro del proceso.</p>
                         </div>
 
                         <details open class="border border-slate-200 rounded-xl">
@@ -463,7 +520,7 @@ Activos individuales           → no quedan asociados con el modelo actual</div
   guardaId: string;
   numeroPc: number;
 }</pre>
-                                    <p class="font-sans p-4 text-[11px] text-slate-600"><code>roomId</code>, <code>instructorId</code> y <code>guardaId</code> corresponden a las FK del préstamo; <code>numeroPc</code> corresponde a <code>loans.numero_pc</code>. El repositorio PostgreSQL será responsable de convertir camelCase a snake_case; no se incluyen en el DTO los ids/fechas/estado generados. Este modelo no asigna activos concretos al préstamo. El repositorio en memoria tampoco comprueba que las referencias existan en catálogos. IDs de usuario enviados por body son solo datos de práctica, no identidad ni autorización confiable; al implementar autenticación, <code>guardaId</code> debe salir de la identidad verificada y no del body.</p>
+                                    <p class="font-sans p-4 text-[11px] text-slate-600"><code>roomId</code>, <code>instructorId</code> y <code>guardaId</code> corresponden a las FK del préstamo; <code>numeroPc</code> corresponde a <code>loans.numero_pc</code>. El repositorio PostgreSQL será responsable de convertir camelCase a snake_case; no se incluyen en el DTO los ids/fechas/estado generados. Este modelo no asigna activos concretos al préstamo. El repositorio de datos no valida las referencias en catálogos por sí mismo; eso se resuelve con la integridad del esquema y, en el caso real, con validaciones de negocio adicionales. IDs de usuario enviados por body son solo datos de práctica, no identidad ni autorización confiable; al implementar autenticación, <code>guardaId</code> debe salir de la identidad verificada y no del body.</p>
                                 </details>
 
                                 <details open class="border border-slate-200 rounded-xl">
@@ -560,28 +617,40 @@ export interface LoanRepository {
                         </details>
 
                         <details open class="border border-emerald-200 rounded-xl">
-                            <summary class="cursor-pointer p-4 font-sans font-bold text-sm">3. Guardar temporalmente en memoria con src/repositories/in-memory-loan.repository.ts</summary>
+                            <summary class="cursor-pointer p-4 font-sans font-bold text-sm">3. Persistencia real con TypeORM y PostgreSQL en src/repositories/typeorm-loan.repository.ts</summary>
                             <div class="p-4 font-sans text-[11px] text-slate-700 space-y-2">
-                                <p>La aplicación usa este adaptador. El <code>Map</code> mantiene los préstamos mientras el proceso Node.js está activo; al reiniciar, comienza vacío. Es una opción sencilla para practicar capas y casos de uso antes de configurar una base de datos.</p>
+                                <p>Este adaptador implementa el mismo contrato del servicio, pero usa <code>DataSource</code> y <code>Repository</code> de TypeORM para interactuar con PostgreSQL. La lógica del negocio no cambia, solo la forma en que se leen y escriben los datos.</p>
                             </div>
-                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">export class InMemoryLoanRepository implements LoanRepository {
-  private readonly loans = new Map&lt;number, Loan&gt;();
-  private nextId = 1;
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">export class TypeOrmLoanRepository implements LoanRepository {
+  private readonly repository: Repository&lt;LoanEntity&gt;;
+
+  constructor(dataSource: DataSource = AppDataSource) {
+    this.repository = dataSource.getRepository(LoanEntity);
+  }
 
   public async create(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
-    const loan: Loan = {
+    const entity = this.repository.create({
       ...input,
-      id: this.nextId++,
       estado: 'PENDIENTE_APROBACION',
-      createdAt: new Date().toISOString(),
       acceptedAt: null
-    };
-    this.loans.set(loan.id, loan);
-    return { ...loan };
+    });
+
+    const saved = await this.repository.save(entity);
+    return this.toDomain(saved);
   }
-  // findAll, findById y updateStatus implementan el mismo contrato.
+
+  public async findAll(filters: LoanFilters = {}): Promise&lt;Loan[]&gt; {
+    const query = this.repository.createQueryBuilder('loan');
+    if (filters.roomId) {
+      query.where('LOWER(CAST(loan.roomId AS text)) = LOWER(CAST(:roomId AS text))', {
+        roomId: filters.roomId
+      });
+    }
+    const entities = await query.getMany();
+    return entities.map((entity) =&gt; this.toDomain(entity));
+  }
 }</pre>
-                            <p class="font-sans p-4 text-[11px] text-slate-600">El adaptador real contiene las cuatro operaciones del contrato y devuelve copias para que el consumidor no modifique directamente el objeto almacenado en el <code>Map</code>. Los datos no son locales permanentes: reiniciar el proceso los borra.</p>
+                            <p class="font-sans p-4 text-[11px] text-slate-600">El punto clave es que el servicio sigue hablando con <code>LoanRepository</code>, no con SQL ni con el cliente PostgreSQL. TypeORM convierte la entidad a SQL y devuelve objetos del dominio, preservando la separación entre negocio y infraestructura.</p>
                         </details>
 
                         <details open class="border border-slate-200 rounded-xl">
@@ -678,17 +747,17 @@ export class LoanService {
 
                         <details class="border border-slate-200 rounded-xl">
                             <summary class="cursor-pointer p-4 font-sans font-bold text-sm">5. Crear src/container.ts — conectar implementaciones</summary>
-                            <pre class="bg-slate-950 text-amber-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { InMemoryLoanRepository } from './repositories/in-memory-loan.repository';
-import { LoanService } from './services/loan.service';
+                            <pre class="bg-slate-950 text-amber-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { LoanService } from './services/loan.service';
+import { TypeOrmLoanRepository } from './repositories/typeorm-loan.repository';
 
-const loanRepository = new InMemoryLoanRepository();
+const loanRepository = new TypeOrmLoanRepository();
 export const loanService = new LoanService(loanRepository);</pre>
-                            <p class="font-sans p-4 text-[11px] text-slate-600"><strong>En palabras:</strong> crea el repositorio JSON concreto, lo inyecta en el servicio y exporta el servicio para que el controller lo reutilice. El módulo <code>container.ts</code> se carga una vez al iniciar; el archivo conserva los préstamos al reiniciar. Al agregar usuarios, ambientes o inventario, se repite este patrón con las clases reales de cada módulo. Consulta el Paso 6 para ver el flujo, qué no debe ir aquí y cómo se cambiaría luego a PostgreSQL.</p>
+                            <p class="font-sans p-4 text-[11px] text-slate-600"><strong>En palabras:</strong> crea el repositorio real de PostgreSQL, lo inyecta en el servicio y exporta el servicio para que el controller lo reutilice. El módulo <code>container.ts</code> se carga una vez al iniciar y gestiona la composición de dependencias; no contiene ninguna regla del negocio ni ninguna lógica de persistencia.</p>
                         </details>
 
                         <details open class="border border-slate-200 rounded-xl">
                             <summary class="cursor-pointer p-4 font-sans font-bold text-sm">6. Reemplazar src/controllers/loan.controller.ts — imports y endpoints completos</summary>
-                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { Request, Response } from 'express';
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { NextFunction, Request, Response } from 'express';
 import { loanService } from '../container';
 import { DomainError } from '../errors/domain.error';
 import { ICreateLoanDTO } from '../dtos/loan.dto';
@@ -696,42 +765,62 @@ import { ICreateLoanDTO } from '../dtos/loan.dto';
 export class LoanController {
   public static createLoan = async (
     req: Request&lt;Record&lt;string, string&gt;, unknown, ICreateLoanDTO&gt;,
-    res: Response
+    res: Response,
+    next: NextFunction
   ): Promise&lt;void&gt; =&gt; {
-    const loan = await loanService.createLoan(req.body);
-    res.status(201).json({ success: true, data: loan });
+    try {
+      const loan = await loanService.createLoan(req.body);
+      res.status(201).json({ success: true, data: loan });
+    } catch (error) {
+      next(error);
+    }
   };
 
   public static getLoansByFilter = async (
     req: Request,
-    res: Response
+    res: Response,
+    next: NextFunction
   ): Promise&lt;void&gt; =&gt; {
-    const { roomId } = req.query;
-    if (roomId !== undefined &amp;&amp; typeof roomId !== 'string') {
-      throw new DomainError(
-        'VALIDATION_ERROR',
-        'El filtro roomId debe ser un texto.'
-      );
-    }
+    try {
+      const { roomId } = req.query;
+      if (roomId !== undefined &amp;&amp; typeof roomId !== 'string') {
+        throw new DomainError(
+          'VALIDATION_ERROR',
+          'El filtro roomId debe ser un texto.'
+        );
+      }
 
-    const loans = await loanService.getLoans({ roomId });
-    res.status(200).json({ success: true, data: loans });
+      const loans = await loanService.getLoans({ roomId });
+      res.status(200).json({ success: true, data: loans });
+    } catch (error) {
+      next(error);
+    }
   };
 
   public static getLoanById = async (
     req: Request&lt;{ id: string }&gt;,
-    res: Response
+    res: Response,
+    next: NextFunction
   ): Promise&lt;void&gt; =&gt; {
-    const loan = await loanService.getLoanDetail(Number(req.params.id));
-    res.status(200).json({ success: true, data: loan });
+    try {
+      const loan = await loanService.getLoanDetail(Number(req.params.id));
+      res.status(200).json({ success: true, data: loan });
+    } catch (error) {
+      next(error);
+    }
   };
 
   public static acceptLoanInventory = async (
     req: Request&lt;{ id: string }&gt;,
-    res: Response
+    res: Response,
+    next: NextFunction
   ): Promise&lt;void&gt; =&gt; {
-    const loan = await loanService.acceptLoan(Number(req.params.id));
-    res.status(200).json({ success: true, data: loan });
+    try {
+      const loan = await loanService.acceptLoan(Number(req.params.id));
+      res.status(200).json({ success: true, data: loan });
+    } catch (error) {
+      next(error);
+    }
   };
 }</pre>
                         </details>
@@ -810,7 +899,7 @@ export default router;</pre>
                             <p class="font-bold">Compilar y ejecutar después de crear los archivos</p>
                             <pre class="bg-slate-950 text-emerald-300 p-3 rounded-lg font-mono text-[11px]">npm run build
 npm run dev</pre>
-                            <p>Si TypeScript informa de un import o una ruta incorrectos, comprueba primero los nombres de archivo y que no hayas reemplazado el DTO o validador preexistentes. El repositorio usa un <code>Map</code> en memoria; sus préstamos desaparecen al reiniciar el proceso.</p>
+                            <p>Si TypeScript informa de un import o una ruta incorrectos, revisa primero los nombres del archivo y la composición de dependencias. La capa de persistencia actual ya usa TypeORM sobre PostgreSQL y no depende de almacenamiento efímero dentro del proceso.</p>
                         </div>
                     </section>
 
@@ -827,6 +916,8 @@ npm run dev</pre>
   middlewares/validateLoan.middleware.ts existente: valida el body HTTP
   controllers/loan.controller.ts         existente: adapta HTTP
   routes/loan.routes.ts                  existente: conecta middleware y controller
+    config/data-source.ts                  crear: conexión PostgreSQL con TypeORM
+    entities/loan.entity.ts                crear: mapeo de la tabla loans
   errors/                                 crear: errores reconocibles por la app
   repositories/                           crear: contrato y adaptador de datos
   services/                               crear: reglas y casos de uso
@@ -835,7 +926,22 @@ npm run dev</pre>
                         </div>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 1.</span> Definir el error de aplicación/dominio</h5>
+                <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 1.</span> Configurar PostgreSQL en el archivo .env existente</h5>
+                <p class="font-sans text-xs text-slate-600">Antes de crear las capas, prepara la conexión. Usa el archivo <code>.env</code> que ya está en la raíz del proyecto: completa o actualiza las variables que falten; no crees otro archivo de entorno ni reemplaces valores locales que ya funcionan. <code>server.ts</code> carga este archivo mediante <code>dotenv/config</code> antes de iniciar la aplicación.</p>
+                <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">DB_TYPE=postgres
+  DB_HOST=localhost
+  DB_PORT=5432
+  DB_USERNAME=postgres
+  DB_PASSWORD=TU_CLAVE_LOCAL
+  DB_NAME=controllabs
+  DB_SCHEMA=public
+  PORT=5000
+  NODE_ENV=development</pre>
+                <p class="font-sans text-[11px] text-slate-600"><code>DB_TYPE</code> hace que el contenedor seleccione el repositorio de TypeORM; las variables <code>DB_HOST</code> a <code>DB_SCHEMA</code> configuran el <code>DataSource</code>; <code>PORT</code> indica dónde escucha Express. Sustituye la clave de ejemplo por la contraseña local de PostgreSQL y comprueba que el servicio de base de datos, la base <code>controllabs</code> y su esquema estén disponibles. El archivo <code>.env</code> ya está excluido por <code>.gitignore</code>: no compartas ni subas sus credenciales. Para este ejercicio usa <code>NODE_ENV=development</code>; no actives sincronización automática del esquema en producción.</p>
+              </article>
+
+              <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 2.</span> Definir el error de aplicación/dominio</h5>
                             <p class="font-sans text-xs text-slate-600"><code>src/errors/domain.error.ts</code> — crea este archivo primero. El servicio debe poder expresar “no existe” o “estado incompatible” sin importar <code>Response</code>, códigos HTTP ni Express. El error lleva un código estable; el middleware global decide después qué HTTP enviar.</p>
                             <pre class="bg-slate-950 text-purple-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">export type DomainErrorCode = 'VALIDATION_ERROR' | 'NOT_FOUND' | 'CONFLICT';
 
@@ -852,8 +958,8 @@ export class DomainError extends Error {
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 2.</span> Crear el contrato del repositorio</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/repositories/loan.repository.ts</code> — define qué operaciones necesita el servicio, sin decidir si los datos viven en memoria o PostgreSQL. Importa el DTO existente y declara el modelo que las operaciones retornan.</p>
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 3.</span> Crear el contrato del repositorio</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/repositories/loan.repository.ts</code> — define qué operaciones necesita el servicio, sin decidir el motor de persistencia. Importa el DTO existente y declara el modelo que las operaciones retornan.</p>
                             <ul class="font-sans text-[11px] text-slate-600 list-disc list-inside space-y-1">
                                 <li><code>Loan</code> representa un préstamo ya creado, incluyendo id, estado y marcas de tiempo.</li>
                                 <li><code>LoanStatus</code> limita estados a los valores admitidos: evita actualizar con cualquier texto arbitrario.</li>
@@ -874,17 +980,23 @@ export class DomainError extends Error {
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 3.</span> Implementar persistencia temporal en memoria</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/repositories/in-memory-loan.repository.ts</code> — implementa el contrato del paso anterior con un <code>Map</code>. Los registros viven solo durante el proceso Node.js y se borran al reiniciar. Esto permite practicar el flujo sin configurar JSON ni PostgreSQL.</p>
-                            <div class="bg-slate-950 text-emerald-300 p-4 rounded-xl font-mono text-[11px] leading-relaxed">POST /loans → servicio → InMemoryLoanRepository.create
-                                 → asigna id y estado en el Map del proceso
-                                 → devuelve el préstamo creado</div>
-                            <p class="font-sans text-[11px] text-slate-600">El adaptador no valida claves foráneas ni persiste los datos. Cuando el proyecto requiera conservar información entre reinicios, se reemplazará por otro adaptador que implemente el mismo contrato.</p>
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 4.</span> Crear la entidad y configurar el DataSource</h5>
+                            <p class="font-sans text-xs text-slate-600">Crea <code>src/entities/loan.entity.ts</code> para describir la tabla <code>loans</code> con <code>@Entity</code>, <code>@PrimaryGeneratedColumn</code> y los decoradores <code>@Column</code>. Después crea <code>src/config/data-source.ts</code> con <code>new DataSource({ type: 'postgres', ... })</code>, las variables del paso 1 y <code>entities: [LoanEntity]</code>. En <code>server.ts</code>, llama a <code>initializeDatabase()</code> antes de <code>app.listen</code>, para no aceptar peticiones hasta que la conexión se inicialice.</p>
+                            <p class="font-sans text-[11px] text-slate-600">Compara los metadatos de la entidad con <code>bd.sql</code>: declara explícitamente nombres como <code>room_id</code> y <code>created_at</code>, y revisa que el tipo de la clave primaria corresponda con el <code>BIGINT</code> del esquema. La explicación detallada de cada decorador y del ciclo de conexión está en la sección anterior. No avances hasta que entidad y esquema representen las mismas columnas.</p>
+                          </article>
+
+                          <article class="border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 5.</span> Implementar persistencia real con TypeORM</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/repositories/typeorm-loan.repository.ts</code> — implementa el contrato del paso 3 con TypeORM y PostgreSQL. El servicio sigue recibiendo el mismo contrato <code>LoanRepository</code>; el adaptador utiliza la entidad del paso 4 para leer y guardar filas.</p>
+                            <div class="bg-slate-950 text-emerald-300 p-4 rounded-xl font-mono text-[11px] leading-relaxed">POST /loans → servicio → TypeOrmLoanRepository.create
+                                 → entidad LoanEntity → INSERT en la tabla loans
+                               → devuelve el préstamo con estado y fechas</div>
+                            <p class="font-sans text-[11px] text-slate-600">El adaptador no hace lógica de negocio ni responde HTTP. Persiste mediante PostgreSQL y convierte el resultado a objetos del dominio sin acoplar el servicio o el controller a TypeORM.</p>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 4.</span> Crear el servicio y sus casos de uso</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/services/loan.service.ts</code> — aquí se implementan acciones de negocio. El constructor recibe <em>la interfaz</em> <code>LoanRepository</code>; no conoce Express ni crea internamente la base de datos. Cada método coordina su regla y delega la lectura/escritura al repositorio. Usa el archivo completo con imports del panel anterior; este fragmento destaca las reglas de creación.</p>
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 6.</span> Crear el servicio y sus casos de uso</h5>
+                          <p class="font-sans text-xs text-slate-600"><code>src/services/loan.service.ts</code> — aquí se implementan acciones de negocio. El constructor recibe <em>la interfaz</em> <code>LoanRepository</code>; no conoce Express ni crea internamente la base de datos. Cada método coordina su regla y delega la lectura/escritura al repositorio. La lógica del servicio se centra en decisiones del dominio: validaciones, estados y errores de negocio, dejando la respuesta HTTP en manos del controller y del middleware global.</p>
                             <pre class="bg-slate-950 text-sky-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">constructor(private readonly loanRepository: LoanRepository) {}
 
 async createLoan(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
@@ -922,12 +1034,12 @@ async getLoanDetail(id: number): Promise&lt;Loan&gt; {
                                     <li>Normaliza los UUID de ambiente y personas a minúsculas antes de guardar.</li>
                                     <li>Si las reglas pasan, llama al repositorio; este crea el id, inicia el estado pendiente y fija las fechas.</li>
                                 </ol>
-                                <p><strong>Límite de alcance:</strong> el DTO lleva roomId, instructorId, guardaId y numeroPc. El repositorio JSON solo persiste préstamos y no hay repositorios de ambientes/usuarios para verificar existencia y estado. Sin asociación de equipos, no se puede saber qué activos se entregaron o recibieron.</p>
+                                <p><strong>Límite de alcance:</strong> el DTO lleva roomId, instructorId, guardaId y numeroPc. Este recurso solo persiste préstamos; todavía no hay repositorios de ambientes/usuarios para verificar existencia y estado. Sin asociación de equipos, no se puede saber qué activos se entregaron o recibieron.</p>
                             </div>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 5.</span> Comprender la aceptación como transición de estado</h5>
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 7.</span> Comprender la aceptación como transición de estado</h5>
                             <p class="font-sans text-xs text-slate-600"><code>LoanService.acceptLoan</code> primero valida el identificador con <code>validateId</code> y pide al repositorio cambiar el estado únicamente si el valor actual sigue siendo <code>PENDIENTE_APROBACION</code>. Si no se actualizó, consulta el registro para distinguir dos situaciones: inexistente (<code>404</code>) o ya aceptado/incompatible (<code>409</code>).</p>
                             <pre class="bg-slate-950 text-sky-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">const updated = await repository.updateStatus(
   id,
@@ -939,7 +1051,7 @@ if (updated) return updated;
 const current = await repository.findById(id);
 if (!current) throw new DomainError('NOT_FOUND', 'No existe.');
 throw new DomainError('CONFLICT', 'Ya fue aceptado.');</pre>
-                            <p class="font-sans text-[11px] text-slate-600">La condición de estado evita que dos solicitudes concurrentes del mismo proceso acepten dos veces el mismo préstamo. El repositorio JSON serializa las operaciones de esta instancia; una base PostgreSQL deberá hacer esa condición dentro de un <code>UPDATE ... WHERE estado = ...</code> atómico y coordinar varias instancias.</p>
+                            <p class="font-sans text-[11px] text-slate-600">El repositorio TypeORM actual consulta el estado y luego guarda el cambio en una operación separada. Si varias solicitudes intentan aceptar el mismo préstamo al mismo tiempo, conviene implementar la transición como un <code>UPDATE ... WHERE estado = ...</code> atómico o usar una transacción con el aislamiento adecuado.</p>
                             <div class="bg-sky-50 border border-sky-200 p-3 rounded-lg font-sans text-[11px] text-sky-950 space-y-1">
                                 <p><strong>Reglas aplicadas ahora:</strong> id entero positivo; el préstamo debe existir; transición única de pendiente a aceptado; se registra <code>acceptedAt</code>; si ya no está pendiente, se devuelve <code>409 CONFLICT</code>.</p>
                                 <p><strong>Falta para la regla de autorización:</strong> guardar quién aceptó y comprobar que el actor sea el instructor autorizado. El endpoint actual no tiene autenticación; no debe aceptar un <code>instructorId</code> enviado libremente en el body como prueba de identidad. Esa regla se implementa cuando exista identidad verificada y se pase al caso de uso desde el contexto autenticado.</p>
@@ -947,16 +1059,16 @@ throw new DomainError('CONFLICT', 'Ya fue aceptado.');</pre>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 6.</span> Conectar las dependencias en un solo lugar</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/container.ts</code> es el <strong>punto de composición</strong> (también llamado composition root): el lugar que decide qué implementaciones concretas usa la aplicación y conecta sus dependencias. No es un contenedor de datos, no guarda préstamos y no contiene reglas de negocio. Hoy elige memoria; mañana podrá elegir PostgreSQL.</p>
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 8.</span> Conectar las dependencias en un solo lugar</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>src/container.ts</code> es el <strong>punto de composición</strong> (también llamado composition root): el lugar que decide qué implementaciones concretas usa la aplicación y conecta sus dependencias. No es un contenedor de datos, no guarda préstamos y no contiene reglas de negocio. Con <code>DB_TYPE=postgres</code>, crea <code>TypeOrmLoanRepository</code> y lo inyecta en el servicio bajo el contrato <code>LoanRepository</code>.</p>
                             <pre class="bg-slate-950 text-amber-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">import { LoanService } from './services/loan.service';
-import { InMemoryLoanRepository } from './repositories/in-memory-loan.repository';
+import { TypeOrmLoanRepository } from './repositories/typeorm-loan.repository';
 
-const loanRepository = new InMemoryLoanRepository();
+const loanRepository = new TypeOrmLoanRepository();
 export const loanService = new LoanService(loanRepository);</pre>
                             <div class="bg-sky-50 border border-sky-200 p-3 rounded-lg font-sans text-[11px] text-sky-950 space-y-2">
-                                <p><strong>Lee la conexión de derecha a izquierda:</strong> <code>InMemoryLoanRepository</code> implementa el contrato <code>LoanRepository</code>; el servicio recibe ese repositorio por su constructor; el controller importa el <code>loanService</code> ya construido. El controller no crea repositorios ni decide dónde se persiste.</p>
-                                <p><strong>¿Por qué se crea una sola vez?</strong> El módulo se carga al iniciar y todas las peticiones comparten la instancia y su <code>Map</code>. Si se creara un repositorio nuevo por petición, cada una vería datos distintos. Al reiniciar el proceso, el Map vuelve a empezar vacío.</p>
+                                <p><strong>Lee la conexión de derecha a izquierda:</strong> <code>TypeOrmLoanRepository</code> implementa el contrato <code>LoanRepository</code>; el servicio recibe ese repositorio por su constructor; el controller importa el <code>loanService</code> ya construido. El controller no crea repositorios ni decide dónde se persiste.</p>
+                                <p><strong>¿Por qué se crea una sola vez?</strong> El módulo se carga al iniciar y todas las peticiones comparten la instancia del DataSource y del repositorio. Eso evita abrir conexiones nuevas por cada request y permite que el ORM haga gestión eficiente de conexiones.</p>
                             </div>
                             <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-lg font-sans text-[11px] text-emerald-950 space-y-2">
                                 <p class="font-bold">¿Qué hago cuando agregue los demás módulos?</p>
@@ -966,39 +1078,41 @@ export const loanService = new LoanService(loanRepository);</pre>
                                     <li>Exportar el servicio construido para que su controller lo use, igual que hace hoy <code>LoanController</code> con <code>loanService</code>.</li>
                                     <li>Montar las rutas del módulo en el router de la API. El container no registra rutas.</li>
                                 </ol>
-                                <pre class="bg-emerald-950 text-emerald-100 p-3 rounded-lg overflow-x-auto">const loanRepository = new InMemoryLoanRepository();
+                                <pre class="bg-emerald-950 text-emerald-100 p-3 rounded-lg overflow-x-auto">const loanRepository = new TypeOrmLoanRepository();
 export const loanService = new LoanService(loanRepository);
 
-const roomRepository = new InMemoryRoomRepository();
-export const roomService = new RoomService(roomRepository);
-
-const equipmentRepository = new InMemoryEquipmentRepository();
-export const equipmentService = new EquipmentService(equipmentRepository);</pre>
-                                <p>El fragmento de usuarios/ambientes/equipos ilustra el patrón para el futuro; crea esos nombres solo cuando existan sus clases reales. No se crea un container por ruta ni uno por cada petición. Si más adelante hay muchas dependencias, se pueden agrupar por módulo (por ejemplo <code>loan.container.ts</code> y <code>equipment.container.ts</code>); no hace falta anticiparlo ahora.</p>
+const roomRepository = new TypeOrmRoomRepository();
+export const roomService = new RoomService(roomRepository);</pre>
+                                <p>El fragmento de usuarios/ambientes/equipos ilustra el patrón para el futuro; crea esos nombres solo cuando existan sus clases reales. La idea es mantener la misma separación de responsabilidades, aunque el adaptador concreto cambie.</p>
                             </div>
                             <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg font-sans text-[11px] text-amber-950 space-y-2">
-                                <p><strong>¿Y al cambiar a PostgreSQL?</strong> Se crea un adaptador <code>PostgresLoanRepository</code> que implementa el mismo contrato. En este archivo se cambia la construcción de <code>InMemoryLoanRepository</code> por la construcción del adaptador PostgreSQL y se le entrega la conexión compartida. <code>LoanService</code> y <code>LoanController</code> siguen dependiendo de sus contratos, no del driver SQL.</p>
-                                <pre class="bg-amber-950 text-amber-100 p-3 rounded-lg overflow-x-auto">const loanRepository = new PostgresLoanRepository(database);
+                                <p><strong>¿Y la conexión a PostgreSQL?</strong> En la implementación actual se usa un <code>DataSource</code> de TypeORM y la entidad <code>LoanEntity</code> mapea la tabla <code>loans</code>. En el contenedor se construye <code>TypeOrmLoanRepository</code> y se inyecta en el servicio. <code>LoanService</code> y <code>LoanController</code> siguen dependiendo de su contrato, no del driver SQL.</p>
+                                <pre class="bg-amber-950 text-amber-100 p-3 rounded-lg overflow-x-auto">const loanRepository = new TypeOrmLoanRepository();
 export const loanService = new LoanService(loanRepository);</pre>
                                 <p>La regla para decidir qué instancia crear vive aquí; las reglas de préstamo viven en <code>LoanService</code>; las consultas y escrituras viven en el repositorio; las respuestas HTTP viven en el controller. Esa separación es el objetivo.</p>
                             </div>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 7.</span> Hacer que el controlador delegue al servicio</h5>
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 9.</span> Hacer que el controlador delegue al servicio</h5>
                             <p class="font-sans text-xs text-slate-600"><code>src/controllers/loan.controller.ts</code> — recibe los valores de Express, llama al caso de uso y transforma el resultado en HTTP. Para crear, retorna <code>201 Created</code>; para consultar o aceptar, <code>200 OK</code>. El controlador no implementa reglas de inventario ni consulta directamente el repositorio.</p>
                             <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">public static createLoan = async (
   req: Request&lt;Record&lt;string, string&gt;, unknown, ICreateLoanDTO&gt;,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise&lt;void&gt; =&gt; {
-  const loan = await loanService.createLoan(req.body);
-  res.status(201).json({ success: true, data: loan });
+  try {
+    const loan = await loanService.createLoan(req.body);
+    res.status(201).json({ success: true, data: loan });
+  } catch (error) {
+    next(error);
+  }
 };</pre>
-                            <p class="font-sans text-[11px] text-slate-600">El handler es <code>async</code> porque el servicio/repository devuelven promesas. Express 5 deriva automáticamente un rechazo no capturado al middleware global. No se debe capturar el error y silenciarlo. En <code>getLoansByFilter</code> todavía hay una comprobación del query <code>aula</code> en el controller: es validación de transporte, no regla del servicio; al generalizarla, muévela a un middleware de query para dejar la frontera HTTP homogénea.</p>
+                            <p class="font-sans text-[11px] text-slate-600">El handler es <code>async</code> porque el servicio devuelve una promesa. El servicio lanza <code>DomainError</code>; el controller captura el error y lo entrega con <code>next(error)</code> al middleware global. El servicio no importa Express y no llama a <code>next()</code>.</p>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 8.</span> Conectar router y mantener la validación de la Sesión 3</h5>
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 10.</span> Conectar router y mantener la validación de la Sesión 3</h5>
                             <p class="font-sans text-xs text-slate-600"><code>src/routes/loan.routes.ts</code> ya define la secuencia del POST. El validador corre antes del controlador; si responde <code>400</code>, el caso de uso no se ejecuta. Las demás rutas delegan al controlador correspondiente.</p>
                             <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">router.post('/', validateLoanPayload, LoanController.createLoan);
 router.get('/search', LoanController.getLoansByFilter);
@@ -1008,7 +1122,7 @@ router.put('/:id/accept', LoanController.acceptLoanInventory);</pre>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 9.</span> Traducir errores al protocolo HTTP en un único punto</h5>
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 11.</span> Traducir errores al protocolo HTTP en un único punto</h5>
                             <p class="font-sans text-xs text-slate-600"><code>src/middlewares/errorHandler.middleware.ts</code> — reconoce <code>DomainError</code> y mapea sus códigos a HTTP: <code>VALIDATION_ERROR → 400</code>, <code>NOT_FOUND → 404</code>, <code>CONFLICT → 409</code>. El servicio no necesita conocer esos números.</p>
                             <ul class="font-sans text-[11px] text-slate-600 list-disc list-inside space-y-1">
                                 <li>JSON malformado sigue respondiendo <code>400</code> (error del parser, no del servicio).</li>
@@ -1019,9 +1133,10 @@ router.put('/:id/accept', LoanController.acceptLoanInventory);</pre>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 10.</span> Compilar y probar el flujo</h5>
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 12.</span> Compilar y probar el flujo</h5>
                             <p class="font-sans text-xs text-slate-600">Desde la terminal integrada de VS Code, ejecuta primero la compilación y luego levanta el servidor:</p>
                             <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">npm run build
+npx tsx --test tests/loan.controller.test.ts
 npm run dev</pre>
                             <p class="font-sans text-xs text-slate-600">Envía desde Postman/Thunder Client o una terminal estas peticiones y comprueba tanto el status como el JSON:</p>
                             <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">POST http://localhost:5000/api/v1/loans
@@ -1037,7 +1152,7 @@ GET  http://localhost:5000/api/v1/loans/search?roomId=d3eebc99-9c0b-4ef8-bb6d-6b
 GET  http://localhost:5000/api/v1/loans/999 → 404 NOT_FOUND
 PUT  http://localhost:5000/api/v1/loans/1/accept → 200
 PUT  http://localhost:5000/api/v1/loans/1/accept → 409 CONFLICT</pre>
-                            <p class="font-sans text-[11px] text-slate-600">Los UUID deben tener formato válido; el repositorio en memoria no comprueba que existan en las tablas. Usa el id que realmente devolvió el POST en las pruebas PUT. Reiniciar el servidor borra los préstamos.</p>
+                            <p class="font-sans text-[11px] text-slate-600">Los UUID deben tener formato válido y la base de datos debe tener las relaciones necesarias; el repositorio TypeORM valida el flujo con la entidad y la capa de acceso a datos. Usa el id que realmente devolvió el POST en las pruebas PUT y confirma que la base siga disponible.</p>
                         </article>
 
                         <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl font-sans space-y-2">
@@ -1048,7 +1163,7 @@ PUT  http://localhost:5000/api/v1/loans/1/accept → 409 CONFLICT</pre>
                                 <li><code>validateLoanPayload</code> comprueba el contrato del DTO. Si falla, contesta 400 y el flujo termina.</li>
                                 <li><code>LoanController</code> toma el body y llama a <code>loanService.createLoan</code>.</li>
                                 <li><code>LoanService</code> aplica la regla de negocio y pide la creación al contrato <code>LoanRepository</code>.</li>
-                                <li><code>InMemoryLoanRepository</code> genera id/estado/fechas y devuelve el préstamo.</li>
+                                <li><code>TypeOrmLoanRepository</code> genera id/estado/fechas y devuelve el préstamo desde la base de datos.</li>
                                 <li>El controller responde 201 con el recurso creado.</li>
                             </ol>
                         </div>
@@ -1140,8 +1255,8 @@ if (err instanceof DomainError) {
                         <p><strong>Rutas de la API actual:</strong> crear préstamo → <code>201</code>; búsqueda/detalle/aceptación → <code>200</code>; identificador inválido → <code>400</code>; inexistente → <code>404</code>; doble aceptación → <code>409</code>; fallo inesperado → <code>500</code>. La ruta de prueba de error solo se registra fuera de producción y antes del 404. La aceptación todavía no implementa autenticación/autorización; no debe considerarse lista para producción hasta protegerla con una identidad verificada como indica la Sesión 3.</p>
                     </div>
                     <div class="bg-amber-950/50 p-4 rounded-xl text-[11px] text-amber-100 space-y-2">
-                        <p><strong>Composición actual:</strong> <code>src/container.ts</code> inyecta <code>InMemoryLoanRepository</code> en el servicio. Los préstamos existen solo mientras el proceso siga activo.</p>
-                        <p><strong>Persistencia futura:</strong> se agrega un adaptador PostgreSQL que implemente <code>LoanRepository</code> y se cambia la composición; ni el controlador ni las reglas del servicio necesitan importar el driver SQL.</p>
+                        <p><strong>Composición actual:</strong> <code>src/container.ts</code> inyecta <code>TypeOrmLoanRepository</code> en el servicio. La persistencia real se hace con PostgreSQL usando TypeORM, no con almacenamiento efímero del proceso.</p>
+                        <p><strong>Persistencia actual:</strong> el repositorio sigue cumpliendo el contrato <code>LoanRepository</code>, pero la lectura y escritura se realiza contra la base de datos relacional mediante la entidad <code>LoanEntity</code> y el <code>DataSource</code> del ORM.</p>
                     </div>
                     <div class="bg-white text-slate-800 p-5 rounded-2xl space-y-3">
                         <h4 class="font-sans font-bold text-sm">Práctica: verificar que cada capa cumple su responsabilidad</h4>
@@ -1156,7 +1271,7 @@ POST /api/v1/loans con numeroPc: 0 → 400 VALIDATION_ERROR
 GET /api/v1/loans/99999 → 404 NOT_FOUND
 PUT /api/v1/loans/1/accept dos veces → 200 y después 409 CONFLICT
 Cuerpo JSON malformado → 400; GET /__test/error (desarrollo) → 500</pre>
-                        <p class="font-sans text-[11px] text-slate-600">Confirma también que una petición inválida no crea un registro y que el logger de la Sesión 3 se ejecuta antes del validador. Reinicia el servidor y comprueba que el almacenamiento en memoria comienza vacío.</p>
+                        <p class="font-sans text-[11px] text-slate-600">Confirma también que una petición inválida no crea un registro y que el logger de la Sesión 3 se ejecuta antes del validador. La persistencia real se conserva en PostgreSQL, por lo que los datos no desaparecen al reiniciar el proceso si la base sigue disponible.</p>
                     </div>
                 </div>
             </div>
@@ -1202,12 +1317,12 @@ Cuerpo JSON malformado → 400; GET /__test/error (desarrollo) → 500</pre>
             const scenarios = {
                 create: {
                     http: 201,
-                    pipeline: ["requestLogger", "validateLoanPayload → next()", "LoanController.createLoan", "LoanService.createLoan", "InMemoryLoanRepository.create"],
+                    pipeline: ["requestLogger", "validateLoanPayload → next()", "LoanController.createLoan", "LoanService.createLoan", "TypeOrmLoanRepository.create"],
                     result: { success: true, data: { id: 1, roomId: "d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44", instructorId: "c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33", guardaId: "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22", numeroPc: 1, estado: "PENDIENTE_APROBACION" } }
                 },
                 rule: {
                     http: 400,
-                    pipeline: ["requestLogger", "validateLoanPayload → next()", "LoanController.createLoan", "LoanService.createLoan → DomainError(VALIDATION_ERROR)", "globalErrorHandler"],
+                    pipeline: ["requestLogger", "validateLoanPayload → next()", "LoanController.createLoan", "LoanService.createLoan → DomainError(VALIDATION_ERROR)", "catch(error) → next(error)", "globalErrorHandler"],
                     result: { success: false, code: "VALIDATION_ERROR", error: "El número de PCs debe ser positivo." }
                 },
                 missing: {
