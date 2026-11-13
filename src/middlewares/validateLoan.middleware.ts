@@ -44,3 +44,49 @@ export const validateLoanPayload = (
 
   next();
 };
+
+export const validateLoanIdParameter = (
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction
+): void => {
+  const { id } = req.params;
+  const isPositiveBigInt =
+    /^[1-9]\d*$/.test(id) &&
+    id.length <= 19 &&
+    BigInt(id) <= 9223372036854775807n;
+
+  if (!isPositiveBigInt) {
+    res.status(400).json({
+      success: false,
+      code: 'VALIDATION_ERROR',
+      error: 'El identificador del préstamo debe ser un entero positivo.'
+    });
+    return;
+  }
+
+  next();
+};
+
+export const validateLoanSearchQuery = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const { roomId } = req.query;
+  const isUuid =
+    roomId === undefined ||
+    (typeof roomId === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roomId));
+
+  if (!isUuid) {
+    res.status(400).json({
+      success: false,
+      code: 'VALIDATION_ERROR',
+      error: 'El filtro roomId debe ser un UUID válido.'
+    });
+    return;
+  }
+
+  next();
+};

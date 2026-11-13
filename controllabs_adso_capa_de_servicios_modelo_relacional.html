@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SENA ADSO - ControlLabs: Capa de Servicios & Modelo Relacional</title>
+    <title>SENA ADSO - ControlLabs: Servicios, PostgreSQL y Prisma ORM</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Canvas Confetti Library -->
@@ -47,7 +47,7 @@
                 </svg>
                 <div>
                     <h1 class="text-md sm:text-lg font-bold tracking-tight">SENA <span class="text-sena-green font-extrabold">ADSO</span></h1>
-                    <p class="text-[10px] sm:text-xs text-slate-400">ControlLabs • Capa de Servicios & Modelo Relacional</p>
+                    <p class="text-[10px] sm:text-xs text-slate-400">ControlLabs • Servicios, PostgreSQL y Prisma ORM</p>
                 </div>
             </div>
 
@@ -78,8 +78,8 @@
         <div id="section-services" class="space-y-6">
             <div class="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
                 <div class="border-l-4 border-sena-green pl-4">
-                    <h3 class="text-2xl font-bold text-sena-dark tracking-tight">Sesión 4: implementar la capa de servicios sobre la arquitectura actual</h3>
-                    <p class="text-slate-500 text-sm">Continuidad de la Sesión 3: el middleware valida el HTTP, el controlador adapta la petición, el servicio aplica reglas y el repositorio persiste.</p>
+                    <h3 class="text-2xl font-bold text-sena-dark tracking-tight">Sesión 4: servicios y persistencia real con PostgreSQL + Prisma ORM</h3>
+                    <p class="text-slate-500 text-sm">Continuidad de la Sesión 3: se conserva la validación HTTP, los servicios y el manejo global de errores; el repositorio Prisma guarda los datos en PostgreSQL.</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs font-mono">
@@ -92,13 +92,13 @@
                     <div class="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl space-y-3">
                         <span class="bg-sena-green text-white px-2.5 py-1 rounded font-bold">2. Service (Reglas de Negocio)</span>
                         <p class="text-slate-700 font-sans leading-relaxed">
-                            Aplica reglas del préstamo (cantidad positiva y transición de estado). No recibe <code class="font-mono">Request</code>/<code class="font-mono">Response</code> ni conoce Express.
+                            Coordina los casos de uso con el repositorio. Por ahora no valida reglas como la cantidad solicitada; la forma HTTP se valida antes y PostgreSQL conserva sus restricciones de integridad.
                         </p>
                     </div>
                     <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
                         <span class="bg-purple-600 text-white px-2.5 py-1 rounded font-bold">3. Repository / DB</span>
                         <p class="text-slate-600 font-sans leading-relaxed">
-                            Implementa el contrato tipado del servicio. En esta sesión se usa memoria temporal; PostgreSQL queda como proyección, no como una conexión ya configurada.
+                            Implementa el contrato tipado con Prisma ORM. PostgreSQL conserva los datos y las reglas de integridad; el servicio y el controlador no conocen los detalles del cliente Prisma.
                         </p>
                     </div>
                 </div>
@@ -131,11 +131,11 @@
             <div class="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
                 <div class="border-l-4 border-sena-blue pl-4">
                     <h3 class="text-2xl font-bold text-sena-dark tracking-tight">2. Modelo Relacional de Base de Datos (SQL DDL Estricto con PK, FK y Tipos)</h3>
-                    <p class="text-slate-500 text-sm">Proyección PostgreSQL para usuarios, ambientes, inventario/préstamos y novedades. El panel es una consulta derivada; no duplica datos en otra tabla.</p>
+                    <p class="text-slate-500 text-sm">Esquema PostgreSQL de usuarios, ambientes, inventario, préstamos y novedades. El panel es una consulta derivada; no duplica datos en otra tabla.</p>
                 </div>
 
                 <!-- Visor de SQL DDL Relacional -->
-                <pre class="bg-slate-950 text-emerald-300 p-5 rounded-2xl font-mono text-xs overflow-x-auto leading-relaxed"><code>-- Proyección PostgreSQL; aún no conectada al backend de esta sesión.
+                <pre class="bg-slate-950 text-emerald-300 p-5 rounded-2xl font-mono text-xs overflow-x-auto leading-relaxed"><code>-- Esquema PostgreSQL de ControlLabs; bd.sql es la referencia SQL.
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE users (
@@ -198,7 +198,7 @@ CREATE INDEX idx_incidents_equipment_status ON incidents(equipment_id, estado);
 -- El panel (quinto módulo funcional) se calcula con consultas/vistas
 -- sobre usuarios, ambientes, inventario, préstamos y novedades; no se duplica.</code></pre>
                 <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 text-xs text-amber-950 space-y-2">
-                    <p><strong>DTO de creación alineado por significado, no por el nombre SQL:</strong> el contrato HTTP usa camelCase y el futuro repositorio PostgreSQL traducirá estos campos a snake_case. La implementación actual guarda préstamos en memoria y sus UUID no se resuelven ni se comprueba que existan en catálogos. <code>guardaId</code> es provisional para la práctica; con autenticación debe derivarse de la identidad verificada, no confiar en el valor enviado por el cliente. El esquema definitivo no incluye una relación préstamo-equipo: el préstamo conserva la cantidad, pero no identifica activos específicos ni registra su devolución individual.</p>
+                    <p><strong>DTO y persistencia:</strong> el contrato HTTP usa camelCase; Prisma mapea propiedades como <code>roomId</code> a columnas existentes como <code>room_id</code> mediante <code>@map</code>. PostgreSQL verifica las claves foráneas, así que los UUID deben existir. <code>guardaId</code> es provisional para la práctica; con autenticación debe derivarse de la identidad verificada, no confiar en el valor enviado por el cliente. El esquema no incluye una relación préstamo-equipo: el préstamo conserva la cantidad, pero no identifica activos específicos ni registra su devolución individual.</p>
                     <div class="overflow-x-auto">
                         <table class="w-full text-[11px] text-left border-collapse">
                             <thead><tr class="bg-amber-100"><th class="p-2">ICreateLoanDTO (API)</th><th class="p-2">Columna SQL</th><th class="p-2">Por qué no se envía en el DTO de creación</th></tr></thead>
@@ -211,9 +211,107 @@ CREATE INDEX idx_incidents_equipment_status ON incidents(equipment_id, estado);
                             </tbody>
                         </table>
                     </div>
-                    <p>La implementación actual guarda los préstamos en un <code>Map</code> del proceso; se pierden al reiniciar el servidor. El DDL es una proyección para una integración posterior con PostgreSQL, no una conexión ya configurada.</p>
+                    <p>La aplicación ya usa <code>PrismaLoanRepository</code> contra PostgreSQL. <code>prisma/schema.prisma</code> describe las tablas y relaciones; <code>bd.sql</code> conserva restricciones CHECK que el esquema Prisma no expresa. Las restricciones del motor siguen siendo la última defensa de integridad.</p>
                 </div>
             </div>
+            <section class="bg-white p-6 md:p-8 rounded-3xl border border-sky-200 shadow-sm space-y-5">
+                <div class="border-l-4 border-sky-500 pl-4">
+                    <h3 class="text-xl font-bold text-sena-dark">Prisma ORM: modelo, consultas y responsabilidades</h3>
+                    <p class="text-slate-500 text-sm">El ORM traduce operaciones tipadas de TypeScript a consultas parametrizadas de PostgreSQL y convierte las filas devueltas a objetos del modelo.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <article class="bg-sky-50 border border-sky-200 p-4 rounded-xl space-y-2">
+                        <h4 class="font-bold text-sky-950">1. Esquema ↔ tablas</h4>
+                        <p><code>prisma/schema.prisma</code> declara modelos, tipos, llaves y relaciones. <code>@@map("loans")</code> y <code>@map("room_id")</code> mantienen el naming de PostgreSQL sin contaminar DTOs y servicios.</p>
+                    </article>
+                    <article class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl space-y-2">
+                        <h4 class="font-bold text-emerald-950">2. Cliente tipado</h4>
+                        <p><code>prisma generate</code> crea el cliente con métodos como <code>prisma.loan.create</code> y <code>findMany</code>. No se concatena texto SQL con valores del usuario; Prisma envía parámetros separados.</p>
+                    </article>
+                    <article class="bg-violet-50 border border-violet-200 p-4 rounded-xl space-y-2">
+                        <h4 class="font-bold text-violet-950">3. Repositorio</h4>
+                        <p><code>PrismaLoanRepository</code> implementa <code>LoanRepository</code>, traduce el modelo generado al modelo de dominio y propaga fallos desconocidos al middleware global.</p>
+                    </article>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-[11px]">
+                    <div class="bg-slate-950 text-sky-200 p-4 rounded-xl space-y-2">
+                        <h4 class="font-bold text-sky-300">Modelo Prisma → tabla existente</h4>
+                        <pre class="font-mono overflow-x-auto">model Loan {
+  id           BigInt   @id @default(autoincrement())
+  roomId       String   @map("room_id") @db.Uuid
+  instructorId String   @map("instructor_id") @db.Uuid
+  guardaId     String   @map("guarda_id") @db.Uuid
+  numeroPc     Int      @map("numero_pc")
+  estado       String   @default("PENDIENTE_APROBACION")
+  createdAt    DateTime @default(now()) @map("created_at")
+  acceptedAt   DateTime? @map("accepted_at")
+  room         Room     @relation(fields: [roomId], references: [id])
+  instructor   User     @relation("LoanInstructor", fields: [instructorId], references: [id])
+  guard        User     @relation("LoanGuard", fields: [guardaId], references: [id])
+
+  @@map("loans")
+}</pre>
+                        <p class="text-slate-300"><code>@map</code> cambia el nombre de una columna; <code>@@map</code> cambia el nombre de una tabla. <code>@relation</code> vincula la FK con cada modelo relacionado.</p>
+                    </div>
+                    <div class="bg-slate-950 text-emerald-200 p-4 rounded-xl space-y-2">
+                        <h4 class="font-bold text-emerald-300">Consultas tipadas usadas por el repositorio</h4>
+                        <pre class="font-mono overflow-x-auto">const rows = await prisma.loan.findMany({
+  where: roomId ? { roomId } : undefined,
+  orderBy: { createdAt: 'desc' }
+});
+
+const changed = await prisma.loan.updateMany({
+  where: { id: BigInt(id), estado: expectedStatus },
+  data: {
+    estado: 'APROBADO_Y_FIRMADO',
+    acceptedAt: new Date()
+  }
+});
+if (changed.count === 0) return null;</pre>
+                        <p class="text-slate-300"><code>findMany</code> filtra y ordena sin traer toda la tabla a Node. La actualización condicional es una sola operación atómica en PostgreSQL; <code>count</code> distingue una transición aplicada de un registro inexistente o ya aceptado.</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-[11px]">
+                    <div class="bg-slate-900 text-emerald-200 p-4 rounded-xl space-y-2">
+                        <h4 class="font-bold text-emerald-300">Configuración local y comandos</h4>
+                        <pre class="font-mono overflow-x-auto"># Editar los componentes en el .env que ya existe
+PGHOST=localhost
+PGPORT=5432
+PGDATABASE=controllabs
+PGUSER=postgres
+PGPASSWORD=REEMPLAZAR_POR_TU_PASSWORD
+PGSCHEMA=public
+
+# En PowerShell, crear la base solo si aún no existe (si existe, omitir)
+psql -U postgres -c "CREATE DATABASE controllabs;"
+# Inicializarla una sola vez (desde la raíz del proyecto)
+psql -U postgres -d controllabs -f .\bd.sql
+
+# Preparar y ejecutar la API
+npm ci
+npx prisma validate
+npm run db:generate
+npm run build
+npm run dev</pre>
+                        <p class="text-slate-300">No se guarda una URL de conexión en <code>.env</code>. <code>PGHOST</code> es el host/servidor, <code>PGPORT</code> el puerto, <code>PGDATABASE</code> el nombre de la base, <code>PGUSER</code>/<code>PGPASSWORD</code> las credenciales y <code>PGSCHEMA</code> el esquema. Actualiza los valores de ejemplo con tu configuración; si la clave lleva espacios o <code>#</code>, ponla entre comillas en <code>.env</code>. El código la codifica al construir la URL. No compartas ni versionas la contraseña. En producción usa una cuenta con permisos mínimos, SSL si el proveedor lo exige y un gestor de secretos; nunca expongas estas variables al frontend.</p>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2">
+                        <h4 class="font-bold text-slate-800">¿Quién abre y cierra la conexión?</h4>
+                        <ol class="list-decimal list-inside space-y-1 text-slate-600">
+                            <li>El módulo compartido <code>src/db/database-url.ts</code> carga dotenv una sola vez y valida los componentes PostgreSQL.</li>
+                            <li>Se crea un único <code>PrismaClient</code> para el proceso; no uno por petición.</li>
+                            <li>Prisma requiere internamente una URL; <code>createDatabaseUrl()</code> la compone en memoria desde las variables y la pasa al cliente/CLI. No se guarda ni se mantiene a mano en <code>.env</code>.</li>
+                            <li><code>prisma.config.ts</code> usa la misma composición para los comandos CLI. <code>server.ts</code> espera <code>$connect()</code> y solo entonces empieza a escuchar.</li>
+                            <li>Al recibir SIGINT/SIGTERM deja de aceptar peticiones y ejecuta <code>$disconnect()</code>.</li>
+                        </ol>
+                        <p class="text-slate-600"><code>db:generate</code> genera tipos y cliente, no crea tablas. En una BD existente, respalda y revisa el esquema antes de usar <code>npm run db:pull</code>; puede reescribir <code>schema.prisma</code>. Para una BD nueva, usa migraciones revisadas. No ejecutes <code>migrate dev</code> contra datos productivos.</p>
+                    </div>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl text-[11px] text-amber-950 space-y-2">
+                    <p><strong>Errores y reglas:</strong> los middlewares validan la forma del body, los UUID y el BIGINT de la ruta, pero no deciden reglas de negocio. El servicio coordina persistencia y mantiene respuestas para registro inexistente/transición ya aplicada; la cantidad no se valida en el servicio. PostgreSQL mantiene claves foráneas y restricciones del esquema. El repositorio traduce P2003/P2004 a errores esperados; los demás fallos llegan a <code>globalErrorHandler</code> y responden 500 genérico.</p>
+                    <p><strong>Tipos importantes:</strong> las llaves <code>BIGINT</code> son <code>bigint</code> en JavaScript y no se serializan directamente a JSON. El repositorio las entrega como texto decimal (<code>id: string</code>) para no perder precisión; el controller pasa <code>req.params.id</code> sin convertirlo a <code>Number</code>.</p>
+                </div>
+            </section>
         </div>
 
         <!-- ================================================= -->
@@ -354,9 +452,10 @@ CREATE INDEX idx_incidents_equipment_status ON incidents(equipment_id, estado);
                             </div>
                         </div>
                         <div class="bg-slate-950 text-emerald-200 p-4 rounded-xl font-mono text-[10px] leading-relaxed overflow-x-auto">Regla / capa / evidencia
-numeroPc es entero &gt; 0        → LoanService.createLoan → VALIDATION_ERROR (400)
-Datos HTTP con forma válida   → validateLoanPayload → 400 antes del servicio
-Estado inicial pendiente      → InMemoryLoanRepository.create
+Forma del body y tipos         → validateLoanPayload → 400 antes del servicio
+UUID de roomId en búsqueda     → validateLoanSearchQuery → 400
+BIGINT positivo en la ruta     → validateLoanIdParameter → 400
+Estado inicial pendiente      → PrismaLoanRepository.create
 Aceptar solo si está pendiente → repository.updateStatus(expectedStatus) → CONFLICT (409)
 Id inexistente                → LoanService.getLoanDetail / acceptLoan → NOT_FOUND (404)
 Ambiente/personas              → aún no verificable; falta consultar catálogos
@@ -441,18 +540,58 @@ Activos individuales           → no quedan asociados con el modelo actual</div
 
                 <div class="space-y-4">
                     <div class="bg-sky-950/60 p-4 rounded-xl text-[11px] text-sky-100 space-y-2">
-                        <p><strong>Contrato actualizado respecto a la Sesión 3:</strong> <code>POST /api/v1/loans</code> conserva la ruta, pero <code>ICreateLoanDTO</code> cambia de aula/nombres de personas a ids relacionados y cantidad: <code>roomId</code>, <code>instructorId</code>, <code>guardaId</code> y <code>numeroPc</code>. No incluye activos individuales porque el esquema definitivo no los vincula al préstamo. Reemplaza el DTO y el middleware por los bloques completos; la persistencia actual es temporal en memoria, no PostgreSQL. El contrato usa camelCase; el futuro repositorio PostgreSQL traduce los campos a columnas SQL snake_case.</p>
+                        <p><strong>Contrato y arquitectura:</strong> <code>POST /api/v1/loans</code> recibe <code>roomId</code>, <code>instructorId</code>, <code>guardaId</code> y <code>numeroPc</code>. El middleware de DTO, el servicio, <code>DomainError</code> y el manejador global mantienen las responsabilidades de la Sesión 3. La persistencia está implementada con PostgreSQL y Prisma ORM: el repositorio mapea el contrato camelCase a las columnas SQL snake_case.</p>
                     </div>
 
                     <section class="bg-white text-slate-800 p-5 md:p-7 rounded-2xl space-y-5">
+                        <div class="border-l-4 border-emerald-500 pl-4">
+                            <h4 class="font-sans font-bold text-xl">Ruta ejecutable: desde PostgreSQL hasta probar el endpoint</h4>
+                            <p class="font-sans text-xs text-slate-600 mt-1">Sigue estos pasos en orden para ejecutar el proyecto que acompaña este recurso. No crees un segundo archivo de entorno ni pegues los fragmentos parciales como si fueran archivos completos.</p>
+                        </div>
+
+                        <ol class="list-decimal list-inside space-y-3 font-sans text-xs text-slate-700">
+                            <li><strong>Instala dependencias en la raíz del proyecto:</strong> abre una terminal allí y ejecuta <code>npm ci</code>. El comando instala las versiones bloqueadas en <code>package-lock.json</code>.</li>
+                            <li><strong>Prepara PostgreSQL:</strong> crea la base configurada en <code>PGDATABASE</code> si todavía no existe. Por ejemplo, para una base llamada <code>controllabs</code>: <code>psql -U postgres -c "CREATE DATABASE controllabs;"</code>. Ejecuta el script del proyecto una sola vez sobre esa base vacía: <code>psql -U postgres -d controllabs -f .\bd.sql</code>. Si la base/tablas ya existen y contienen datos, no vuelvas a ejecutar el script de inicialización; revisa primero su contenido.</li>
+                            <li><strong>Completa el <code>.env</code> existente</strong> con los componentes separados que usa el proyecto (conserva también <code>PORT</code>). Sustituye cada ejemplo por los valores de tu instalación; no compartas ni subas la contraseña:
+                                <pre class="bg-slate-950 text-emerald-300 p-3 mt-2 rounded-lg text-[11px]">PGHOST=localhost
+PGPORT=5432
+PGDATABASE=controllabs
+PGUSER=postgres
+PGPASSWORD=REEMPLAZAR_POR_TU_PASSWORD
+PGSCHEMA=public</pre>
+                                <span class="block mt-2">Si el servidor exige TLS, configura <code>PGSSLMODE</code> con el valor que indique su administrador. <code>PGSCHEMA</code> es opcional; sin ella se usa <code>public</code>. No agregues <code>DATABASE_URL</code>: <code>src/db/database-url.ts</code> compone la URL, codifica credenciales con caracteres especiales y la entrega al cliente/CLI.</span>
+                            </li>
+                            <li><strong>Valida y genera Prisma Client:</strong> ejecuta <code>npx prisma validate</code> y luego <code>npm run db:generate</code>. La generación crea los tipos/cliente de Prisma; no crea la base, las tablas ni los datos. Este proyecto usa el esquema SQL inicial de <code>bd.sql</code>, no ejecutes <code>prisma migrate dev</code> contra esa base.</li>
+                            <li><strong>Compila e inicia:</strong> ejecuta <code>npm run build</code> y después <code>npm run dev</code>. <code>server.ts</code> espera <code>prisma.$connect()</code> antes de abrir el puerto; ver el mensaje de servidor iniciado confirma que la conexión se estableció. Para cerrar, usa <code>Ctrl+C</code>; el proceso cierra el cliente Prisma.</li>
+                            <li><strong>Obtén identificadores reales para probar:</strong> consulta las filas creadas por <code>bd.sql</code> (<code>SELECT id, nombre FROM rooms;</code> y <code>SELECT id, nombre, rol FROM users;</code>). Copia IDs reales: los UUID de ejemplo de esta página son ilustrativos y fallarán por FK si no existen en tu base.</li>
+                            <li><strong>Prueba el flujo HTTP</strong> en Postman o herramienta equivalente, con <code>Content-Type: application/json</code>:
+                                <pre class="bg-slate-950 text-sky-300 p-3 mt-2 rounded-lg text-[11px]">POST http://localhost:&lt;PORT&gt;/api/v1/loans
+{
+  "roomId": "&lt;UUID real de rooms&gt;",
+  "instructorId": "&lt;UUID real de usuario instructor&gt;",
+  "guardaId": "&lt;UUID real de usuario guarda&gt;",
+  "numeroPc": 1
+}</pre>
+                                <span class="block mt-2">Debe responder <code>201</code> con el id BIGINT como texto. Usa ese id en <code>GET /api/v1/loans/:id</code>; verifica también <code>GET /api/v1/loans/search?roomId=&lt;UUID&gt;</code>. Finalmente, envía dos veces <code>PUT /api/v1/loans/:id/accept</code>: la primera responde <code>200</code> y la segunda <code>409</code>.</span>
+                            </li>
+                        </ol>
+
+                        <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl font-sans text-[11px] text-amber-950 space-y-1">
+                            <p><strong>Si no inicia:</strong> el log no imprime valores secretos; revisa que existan <code>PGHOST</code>, <code>PGPORT</code>, <code>PGDATABASE</code>, <code>PGUSER</code> y <code>PGPASSWORD</code>, que PostgreSQL esté activo, que la base exista y que el usuario tenga permisos.</p>
+                            <p>Si <code>bd.sql</code> falla en <code>CREATE EXTENSION pgcrypto</code> por permisos, pide al administrador de PostgreSQL que habilite esa extensión para la base; no elimines la extensión ni las restricciones del esquema.</p>
+                            <p><strong>Importante:</strong> el DTO valida forma y tipos, no reglas de negocio. <code>numeroPc: 0</code> pasa el middleware, pero PostgreSQL puede rechazarlo por el <code>CHECK</code>; el repositorio adapta ese error conocido. Usa registros reales para evitar que una FK inválida confunda la prueba de conexión.</p>
+                        </div>
+                    </section>
+
+                    <section class="bg-white text-slate-800 p-5 md:p-7 rounded-2xl space-y-5">
                         <div class="border-l-4 border-sena-blue pl-4">
-                            <h4 class="font-sans font-bold text-xl">Implementación completa: archivos listos para copiar y pegar</h4>
-                            <p class="font-sans text-xs text-slate-600 mt-1">Estos son archivos completos, con sus imports y rutas correctas, basados en la arquitectura que quedó al terminar la Sesión 3. Crea o reemplaza cada archivo indicado. Los bloques parciales de explicación que siguen son solo extractos; para implementar usa estos bloques completos.</p>
+                            <h4 class="font-sans font-bold text-xl">Implementación de las capas de aplicación</h4>
+                            <p class="font-sans text-xs text-slate-600 mt-1">Los archivos que indican “completo” incluyen sus imports y se pueden reemplazar tal cual. Los bloques llamados extracto muestran una operación representativa, no un archivo completo; para configurar PostgreSQL y ejecutar el proyecto, sigue primero la ruta anterior y conserva los archivos de infraestructura del repositorio.</p>
                         </div>
 
                         <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl font-sans text-[11px] text-amber-950 space-y-1">
-                                    <p><strong>Antes de pegar:</strong> conserva <code>src/middlewares/logger.middleware.ts</code>, <code>src/routes/index.ts</code> y el montaje de la aplicación de la sesión anterior. Como cambió el esquema de préstamos, reemplaza el DTO y su middleware con los ejemplos actualizados de abajo; sus rutas ya deben usar ese validador.</p>
-                                    <p>Los nuevos archivos son <code>src/errors/domain.error.ts</code>, <code>src/repositories/loan.repository.ts</code>, <code>src/repositories/in-memory-loan.repository.ts</code>, <code>src/services/loan.service.ts</code> y <code>src/container.ts</code>. Se reemplazan <code>src/controllers/loan.controller.ts</code> y <code>src/middlewares/errorHandler.middleware.ts</code>. Los datos se guardan temporalmente en memoria; no se instala ni configura PostgreSQL en esta sesión.</p>
+                                    <p><strong>Antes de pegar:</strong> conserva <code>src/middlewares/logger.middleware.ts</code>, <code>src/routes/index.ts</code> y el montaje de la aplicación de la sesión anterior. Conserva tu <code>.env</code> existente y agrega por separado <code>PGHOST</code>, <code>PGPORT</code>, <code>PGDATABASE</code>, <code>PGUSER</code>, <code>PGPASSWORD</code> y <code>PGSCHEMA</code>; no agregues una URL ni crees otro archivo.</p>
+                                    <p>La integración añade <code>prisma/schema.prisma</code>, <code>src/db/prisma.ts</code> y <code>src/repositories/prisma-loan.repository.ts</code>; <code>src/container.ts</code> inyecta el repositorio Prisma. <code>server.ts</code> carga variables de entorno, abre la conexión antes de escuchar y la cierra al apagar. Se conservan el DTO, el servicio y el middleware global de errores.</p>
                         </div>
 
                         <details open class="border border-slate-200 rounded-xl">
@@ -463,7 +602,8 @@ Activos individuales           → no quedan asociados con el modelo actual</div
   guardaId: string;
   numeroPc: number;
 }</pre>
-                                    <p class="font-sans p-4 text-[11px] text-slate-600"><code>roomId</code>, <code>instructorId</code> y <code>guardaId</code> corresponden a las FK del préstamo; <code>numeroPc</code> corresponde a <code>loans.numero_pc</code>. El repositorio PostgreSQL será responsable de convertir camelCase a snake_case; no se incluyen en el DTO los ids/fechas/estado generados. Este modelo no asigna activos concretos al préstamo. El repositorio en memoria tampoco comprueba que las referencias existan en catálogos. IDs de usuario enviados por body son solo datos de práctica, no identidad ni autorización confiable; al implementar autenticación, <code>guardaId</code> debe salir de la identidad verificada y no del body.</p>
+                            <p class="font-sans p-4 text-[11px] text-slate-600"><strong>¿Es obligatoria la interfaz?</strong> No. Una interfaz TypeScript no existe en tiempo de ejecución y el tipado estructural permite pasar cualquier objeto con esos métodos. Aquí se conserva porque es un contrato pequeño que evita que <code>LoanService</code> importe la clase Prisma y facilita usar un fake en pruebas. La alternativa más corta es tipar el constructor directamente como <code>PrismaLoanRepository</code>; es razonable en un ejemplo de un solo adaptador, a cambio de acoplar el servicio a infraestructura.</p>
+                                    <p class="font-sans p-4 text-[11px] text-slate-600"><code>roomId</code>, <code>instructorId</code> y <code>guardaId</code> corresponden a las FK del préstamo; <code>numeroPc</code> corresponde a <code>loans.numero_pc</code>. El repositorio Prisma traduce las propiedades camelCase a columnas snake_case; id/fechas/estado no vienen del cliente. El esquema no asigna activos concretos al préstamo. IDs enviados por body son datos de práctica, no identidad confiable; con autenticación, <code>guardaId</code> debe salir de la identidad verificada.</p>
                                 </details>
 
                                 <details open class="border border-slate-200 rounded-xl">
@@ -512,7 +652,57 @@ export const validateLoanPayload = (
   }
   next();
 };</pre>
-                                    <p class="font-sans p-4 text-[11px] text-slate-600">El middleware verifica los tipos y formato UUID del JSON. No se envían ids de activos porque el esquema ya no vincula equipos con préstamos; la cantidad debe ser un entero positivo y esa regla se conserva en el servicio.</p>
+                                    <p class="font-sans p-4 text-[11px] text-slate-600">Este primer bloque define los imports, helpers y <code>validateLoanPayload</code>. No comprueba que <code>numeroPc</code> sea positivo: esa regla del servicio se aplaza. El siguiente bloque se agrega al mismo archivo para validar query y parámetros de ruta.</p>
+                                </details>
+
+                                <details class="border border-slate-200 rounded-xl">
+                                    <summary class="cursor-pointer p-4 font-sans font-bold text-sm">0.2 Validar formato de query y parámetro en la capa HTTP</summary>
+                                    <p class="p-4 font-sans text-[11px] text-slate-600">Agrega estas dos funciones al final de <code>src/middlewares/validateLoan.middleware.ts</code> del paso 0.1. El identificador de ruta debe caber en BIGINT positivo; el filtro <code>roomId</code>, si se envía, debe ser UUID. Son validaciones HTTP, no reglas de negocio.</p>
+                                    <pre class="bg-slate-950 text-sky-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">export const validateLoanIdParameter = (
+  req: Request&lt;{ id: string }&gt;,
+  res: Response,
+  next: NextFunction
+): void =&gt; {
+  const { id } = req.params;
+  const isPositiveBigInt =
+    /^[1-9]\d*$/.test(id) &amp;&amp;
+    id.length &lt;= 19 &amp;&amp;
+    BigInt(id) &lt;= 9223372036854775807n;
+
+  if (!isPositiveBigInt) {
+    res.status(400).json({
+      success: false,
+      code: 'VALIDATION_ERROR',
+      error: 'El identificador del préstamo debe ser un entero positivo.'
+    });
+    return;
+  }
+
+  next();
+};
+
+export const validateLoanSearchQuery = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void =&gt; {
+  const { roomId } = req.query;
+  const isUuid =
+    roomId === undefined ||
+    (typeof roomId === 'string' &amp;&amp;
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roomId));
+
+  if (!isUuid) {
+    res.status(400).json({
+      success: false,
+      code: 'VALIDATION_ERROR',
+      error: 'El filtro roomId debe ser un UUID válido.'
+    });
+    return;
+  }
+
+  next();
+};</pre>
                                 </details>
 
                                 <details open class="border border-slate-200 rounded-xl">
@@ -537,7 +727,7 @@ export class DomainError extends Error {
 export type LoanStatus = 'PENDIENTE_APROBACION' | 'APROBADO_Y_FIRMADO';
 
 export interface Loan extends ICreateLoanDTO {
-  id: number;
+  id: string;
   estado: LoanStatus;
   createdAt: string;
   acceptedAt: string | null;
@@ -550,9 +740,9 @@ export interface LoanFilters {
 export interface LoanRepository {
   create(input: ICreateLoanDTO): Promise&lt;Loan&gt;;
   findAll(filters?: LoanFilters): Promise&lt;Loan[]&gt;;
-  findById(id: number): Promise&lt;Loan | null&gt;;
+  findById(id: string): Promise&lt;Loan | null&gt;;
   updateStatus(
-    id: number,
+    id: string,
     expectedStatus: LoanStatus,
     status: LoanStatus
   ): Promise&lt;Loan | null&gt;;
@@ -560,178 +750,127 @@ export interface LoanRepository {
                         </details>
 
                         <details open class="border border-emerald-200 rounded-xl">
-                            <summary class="cursor-pointer p-4 font-sans font-bold text-sm">3. Guardar temporalmente en memoria con src/repositories/in-memory-loan.repository.ts</summary>
+                            <summary class="cursor-pointer p-4 font-sans font-bold text-sm">3. Persistir con src/repositories/prisma-loan.repository.ts</summary>
                             <div class="p-4 font-sans text-[11px] text-slate-700 space-y-2">
-                                <p>La aplicación usa este adaptador. El <code>Map</code> mantiene los préstamos mientras el proceso Node.js está activo; al reiniciar, comienza vacío. Es una opción sencilla para practicar capas y casos de uso antes de configurar una base de datos.</p>
+                                <p>El repositorio recibe el cliente Prisma compartido y ejecuta operaciones tipadas. Prisma construye consultas parametrizadas: no se concatena el body con SQL. Los UUID que no existen fallan por la FK; P2003/P2004 se traducen a errores esperados y todo otro fallo se propaga al handler global.</p>
                             </div>
-                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">export class InMemoryLoanRepository implements LoanRepository {
-  private readonly loans = new Map&lt;number, Loan&gt;();
-  private nextId = 1;
-
-  public async create(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
-    const loan: Loan = {
-      ...input,
-      id: this.nextId++,
-      estado: 'PENDIENTE_APROBACION',
-      createdAt: new Date().toISOString(),
-      acceptedAt: null
-    };
-    this.loans.set(loan.id, loan);
-    return { ...loan };
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">const loan = await this.database.loan.create({
+  data: {
+    roomId: input.roomId,
+    instructorId: input.instructorId,
+    guardaId: input.guardaId,
+    numeroPc: input.numeroPc
   }
-  // findAll, findById y updateStatus implementan el mismo contrato.
-}</pre>
-                            <p class="font-sans p-4 text-[11px] text-slate-600">El adaptador real contiene las cuatro operaciones del contrato y devuelve copias para que el consumidor no modifique directamente el objeto almacenado en el <code>Map</code>. Los datos no son locales permanentes: reiniciar el proceso los borra.</p>
+});
+return this.toDomain(loan);</pre>
+                            <p class="font-sans p-4 text-[11px] text-slate-600"><code>create</code> no manda id ni marcas de tiempo: PostgreSQL genera el BIGINT y aplica los defaults. El adaptador convierte el BigInt a texto para que la respuesta sea JSON serializable y preserve precisión.</p>
                         </details>
 
                         <details open class="border border-slate-200 rounded-xl">
                             <summary class="cursor-pointer p-4 font-sans font-bold text-sm">4. Crear src/services/loan.service.ts — completo, incluidos sus imports</summary>
                             <pre class="bg-slate-950 text-sky-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { ICreateLoanDTO } from '../dtos/loan.dto';
 import { DomainError } from '../errors/domain.error';
-import {
-  Loan,
-  LoanFilters,
-  LoanRepository
-} from '../repositories/loan.repository';
+import { Loan, LoanFilters, LoanRepository } from '../repositories/loan.repository';
 
 export class LoanService {
   constructor(private readonly loanRepository: LoanRepository) {}
 
-  public async createLoan(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
-    if (!Number.isInteger(input.numeroPc) || input.numeroPc &lt;= 0) {
-      throw new DomainError(
-        'VALIDATION_ERROR',
-        'El número de PCs debe ser un entero positivo.'
-      );
-    }
-
-    return this.loanRepository.create({
-      roomId: input.roomId.toLowerCase(),
-      instructorId: input.instructorId.toLowerCase(),
-      guardaId: input.guardaId.toLowerCase(),
-      numeroPc: input.numeroPc
-    });
+  public createLoan(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
+    return this.loanRepository.create(input);
   }
 
-  public async getLoans(filters: LoanFilters = {}): Promise&lt;Loan[]&gt; {
-    if (filters.roomId !== undefined &amp;&amp; !this.isUuid(filters.roomId)) {
-      throw new DomainError(
-        'VALIDATION_ERROR',
-        'El filtro roomId debe ser un UUID válido.'
-      );
-    }
-    return this.loanRepository.findAll({
-      roomId: filters.roomId?.toLowerCase()
-    });
+  public getLoans(filters: LoanFilters = {}): Promise&lt;Loan[]&gt; {
+    return this.loanRepository.findAll(filters);
   }
 
-  public async getLoanDetail(id: number): Promise&lt;Loan&gt; {
-    this.validateId(id);
+  public async getLoanDetail(id: string): Promise&lt;Loan&gt; {
     const loan = await this.loanRepository.findById(id);
     if (!loan) {
-      throw new DomainError(
-        'NOT_FOUND',
-        `No existe un préstamo con identificador ${id}.`
-      );
+      throw new DomainError('NOT_FOUND', `No existe un préstamo con identificador ${id}.`);
     }
     return loan;
   }
 
-  public async acceptLoan(id: number): Promise&lt;Loan&gt; {
-    this.validateId(id);
-    const updatedLoan = await this.loanRepository.updateStatus(
-      id,
-      'PENDIENTE_APROBACION',
-      'APROBADO_Y_FIRMADO'
+  public async acceptLoan(id: string): Promise&lt;Loan&gt; {
+    const updated = await this.loanRepository.updateStatus(
+      id, 'PENDIENTE_APROBACION', 'APROBADO_Y_FIRMADO'
     );
-    if (updatedLoan) {
-      return updatedLoan;
-    }
-
-    const currentLoan = await this.loanRepository.findById(id);
-    if (!currentLoan) {
-      throw new DomainError(
-        'NOT_FOUND',
-        `No existe un préstamo con identificador ${id}.`
-      );
-    }
-    throw new DomainError(
-      'CONFLICT',
-      'El préstamo ya fue aceptado y no puede aceptarse nuevamente.'
-    );
-  }
-
-  private validateId(id: number): void {
-    if (!Number.isInteger(id) || id &lt;= 0) {
-      throw new DomainError(
-        'VALIDATION_ERROR',
-        'El identificador del préstamo debe ser un entero positivo.'
-      );
-    }
-  }
-
-  private isUuid(value: string): boolean {
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+    if (updated) return updated;
+    const current = await this.loanRepository.findById(id);
+    if (!current) throw new DomainError('NOT_FOUND', 'No existe el préstamo.');
+    throw new DomainError('CONFLICT', 'El préstamo ya fue aceptado.');
   }
 }</pre>
                         </details>
 
                         <details class="border border-slate-200 rounded-xl">
                             <summary class="cursor-pointer p-4 font-sans font-bold text-sm">5. Crear src/container.ts — conectar implementaciones</summary>
-                            <pre class="bg-slate-950 text-amber-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { InMemoryLoanRepository } from './repositories/in-memory-loan.repository';
+                            <pre class="bg-slate-950 text-amber-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { prisma } from './db/prisma';
+import { PrismaLoanRepository } from './repositories/prisma-loan.repository';
 import { LoanService } from './services/loan.service';
 
-const loanRepository = new InMemoryLoanRepository();
+const loanRepository = new PrismaLoanRepository(prisma);
 export const loanService = new LoanService(loanRepository);</pre>
-                            <p class="font-sans p-4 text-[11px] text-slate-600"><strong>En palabras:</strong> crea el repositorio JSON concreto, lo inyecta en el servicio y exporta el servicio para que el controller lo reutilice. El módulo <code>container.ts</code> se carga una vez al iniciar; el archivo conserva los préstamos al reiniciar. Al agregar usuarios, ambientes o inventario, se repite este patrón con las clases reales de cada módulo. Consulta el Paso 6 para ver el flujo, qué no debe ir aquí y cómo se cambiaría luego a PostgreSQL.</p>
+                            <p class="font-sans p-4 text-[11px] text-slate-600"><strong>En palabras:</strong> el container conecta el adaptador Prisma al contrato del servicio. El cliente se comparte en el proceso y PostgreSQL conserva los datos entre reinicios. No se crea un cliente por petición. Al agregar otros módulos, se crean repositorios Prisma dedicados sin llevar consultas al controller.</p>
                         </details>
 
                         <details open class="border border-slate-200 rounded-xl">
                             <summary class="cursor-pointer p-4 font-sans font-bold text-sm">6. Reemplazar src/controllers/loan.controller.ts — imports y endpoints completos</summary>
-                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { Request, Response } from 'express';
+                            <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { NextFunction, Request, Response } from 'express';
 import { loanService } from '../container';
-import { DomainError } from '../errors/domain.error';
 import { ICreateLoanDTO } from '../dtos/loan.dto';
 
 export class LoanController {
   public static createLoan = async (
     req: Request&lt;Record&lt;string, string&gt;, unknown, ICreateLoanDTO&gt;,
-    res: Response
+    res: Response,
+    next: NextFunction
   ): Promise&lt;void&gt; =&gt; {
-    const loan = await loanService.createLoan(req.body);
-    res.status(201).json({ success: true, data: loan });
+    try {
+      const loan = await loanService.createLoan(req.body);
+      res.status(201).json({ success: true, data: loan });
+    } catch (error) {
+      next(error);
+    }
   };
 
   public static getLoansByFilter = async (
-    req: Request,
-    res: Response
+    req: Request&lt;Record&lt;string, string&gt;, unknown, unknown, { roomId?: string }&gt;,
+    res: Response,
+    next: NextFunction
   ): Promise&lt;void&gt; =&gt; {
-    const { roomId } = req.query;
-    if (roomId !== undefined &amp;&amp; typeof roomId !== 'string') {
-      throw new DomainError(
-        'VALIDATION_ERROR',
-        'El filtro roomId debe ser un texto.'
-      );
+    try {
+      const loans = await loanService.getLoans({ roomId: req.query.roomId });
+      res.status(200).json({ success: true, data: loans });
+    } catch (error) {
+      next(error);
     }
-
-    const loans = await loanService.getLoans({ roomId });
-    res.status(200).json({ success: true, data: loans });
   };
 
   public static getLoanById = async (
     req: Request&lt;{ id: string }&gt;,
-    res: Response
+    res: Response,
+    next: NextFunction
   ): Promise&lt;void&gt; =&gt; {
-    const loan = await loanService.getLoanDetail(Number(req.params.id));
-    res.status(200).json({ success: true, data: loan });
+    try {
+      const loan = await loanService.getLoanDetail(req.params.id);
+      res.status(200).json({ success: true, data: loan });
+    } catch (error) {
+      next(error);
+    }
   };
 
   public static acceptLoanInventory = async (
     req: Request&lt;{ id: string }&gt;,
-    res: Response
+    res: Response,
+    next: NextFunction
   ): Promise&lt;void&gt; =&gt; {
-    const loan = await loanService.acceptLoan(Number(req.params.id));
-    res.status(200).json({ success: true, data: loan });
+    try {
+      const loan = await loanService.acceptLoan(req.params.id);
+      res.status(200).json({ success: true, data: loan });
+    } catch (error) {
+      next(error);
+    }
   };
 }</pre>
                         </details>
@@ -793,14 +932,18 @@ export const globalErrorHandler = (
                             <summary class="cursor-pointer p-4 font-sans font-bold text-sm">8. Confirmar src/routes/loan.routes.ts — archivo completo</summary>
                             <pre class="bg-slate-950 text-emerald-300 p-4 rounded-b-xl overflow-x-auto text-[11px] leading-relaxed">import { Router } from 'express';
 import { LoanController } from '../controllers/loan.controller';
-import { validateLoanPayload } from '../middlewares/validateLoan.middleware';
+import {
+  validateLoanIdParameter,
+  validateLoanPayload,
+  validateLoanSearchQuery
+} from '../middlewares/validateLoan.middleware';
 
 const router = Router();
 
 router.post('/', validateLoanPayload, LoanController.createLoan);
-router.get('/search', LoanController.getLoansByFilter);
-router.get('/:id', LoanController.getLoanById);
-router.put('/:id/accept', LoanController.acceptLoanInventory);
+router.get('/search', validateLoanSearchQuery, LoanController.getLoansByFilter);
+router.get('/:id', validateLoanIdParameter, LoanController.getLoanById);
+router.put('/:id/accept', validateLoanIdParameter, LoanController.acceptLoanInventory);
 
 export default router;</pre>
                             <p class="font-sans p-4 text-[11px] text-slate-600">Este archivo puede conservarse tal como está si coincide con el contenido anterior. El POST mantiene el middleware de DTO de la Sesión 3 delante del controlador.</p>
@@ -810,14 +953,14 @@ export default router;</pre>
                             <p class="font-bold">Compilar y ejecutar después de crear los archivos</p>
                             <pre class="bg-slate-950 text-emerald-300 p-3 rounded-lg font-mono text-[11px]">npm run build
 npm run dev</pre>
-                            <p>Si TypeScript informa de un import o una ruta incorrectos, comprueba primero los nombres de archivo y que no hayas reemplazado el DTO o validador preexistentes. El repositorio usa un <code>Map</code> en memoria; sus préstamos desaparecen al reiniciar el proceso.</p>
+                            <p>Usa tu <code>.env</code> existente y completa los campos <code>PGHOST</code>, <code>PGPORT</code>, <code>PGDATABASE</code>, <code>PGUSER</code> y <code>PGPASSWORD</code>. El código compone la URL internamente; no agregues <code>DATABASE_URL</code>. Ejecuta <code>npm run db:generate</code>. El servidor no empieza a escuchar si no puede conectarse a PostgreSQL.</p>
                         </div>
                     </section>
 
                     <section class="bg-white text-slate-800 p-5 md:p-7 rounded-2xl space-y-5">
                         <div class="border-l-4 border-sena-green pl-4">
                             <h4 class="font-sans font-bold text-xl">Taller paso a paso: de middleware a servicio y repositorio</h4>
-                            <p class="font-sans text-xs text-slate-600 mt-1">Crea los archivos en este orden. Cada paso añade una responsabilidad concreta y utiliza el contrato DTO ya trabajado en la Sesión 3.</p>
+                            <p class="font-sans text-xs text-slate-600 mt-1">Este orden explica cómo se conectan las capas. Los fragmentos parciales sirven para estudiar cada responsabilidad, no reemplazan todos los archivos del repositorio. La ruta ejecutable anterior contiene los pasos de instalación, configuración de PostgreSQL, generación y prueba.</p>
                         </div>
 
                         <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
@@ -853,7 +996,7 @@ export class DomainError extends Error {
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
                             <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 2.</span> Crear el contrato del repositorio</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/repositories/loan.repository.ts</code> — define qué operaciones necesita el servicio, sin decidir si los datos viven en memoria o PostgreSQL. Importa el DTO existente y declara el modelo que las operaciones retornan.</p>
+                            <p class="font-sans text-xs text-slate-600"><code>src/repositories/loan.repository.ts</code> define el contrato de operaciones, y <code>prisma-loan.repository.ts</code> lo implementa usando Prisma. El servicio depende de la interfaz y no conoce la base de datos.</p>
                             <ul class="font-sans text-[11px] text-slate-600 list-disc list-inside space-y-1">
                                 <li><code>Loan</code> representa un préstamo ya creado, incluyendo id, estado y marcas de tiempo.</li>
                                 <li><code>LoanStatus</code> limita estados a los valores admitidos: evita actualizar con cualquier texto arbitrario.</li>
@@ -863,72 +1006,62 @@ export class DomainError extends Error {
                             <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">export interface LoanRepository {
   create(input: ICreateLoanDTO): Promise&lt;Loan&gt;;
   findAll(filters?: LoanFilters): Promise&lt;Loan[]&gt;;
-  findById(id: number): Promise&lt;Loan | null&gt;;
+  findById(id: string): Promise&lt;Loan | null&gt;;
   updateStatus(
-    id: number,
+    id: string,
     expectedStatus: LoanStatus,
     status: LoanStatus
   ): Promise&lt;Loan | null&gt;;
 }</pre>
-                            <p class="font-sans text-[11px] text-slate-600">El contrato hace posible cambiar el adaptador concreto sin reescribir los casos de uso. La interfaz no abre una conexión ni guarda datos por sí sola.</p>
+                            <p class="font-sans text-[11px] text-slate-600">La interfaz no es obligatoria: TypeScript usa tipado estructural y el servicio podría recibir directamente <code>PrismaLoanRepository</code>. Para este ejemplo se conserva el contrato pequeño porque evita que servicio conozca Prisma y permite usar otro adaptador/fake en pruebas. Si el proyecto solo tendrá siempre un adaptador y no necesita esa separación, tipar contra la clase concreta es más corto, pero acopla el servicio a infraestructura.</p>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
-                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 3.</span> Implementar persistencia temporal en memoria</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/repositories/in-memory-loan.repository.ts</code> — implementa el contrato del paso anterior con un <code>Map</code>. Los registros viven solo durante el proceso Node.js y se borran al reiniciar. Esto permite practicar el flujo sin configurar JSON ni PostgreSQL.</p>
-                            <div class="bg-slate-950 text-emerald-300 p-4 rounded-xl font-mono text-[11px] leading-relaxed">POST /loans → servicio → InMemoryLoanRepository.create
-                                 → asigna id y estado en el Map del proceso
-                                 → devuelve el préstamo creado</div>
-                            <p class="font-sans text-[11px] text-slate-600">El adaptador no valida claves foráneas ni persiste los datos. Cuando el proyecto requiera conservar información entre reinicios, se reemplazará por otro adaptador que implemente el mismo contrato.</p>
+                            <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 3.</span> Conectar PostgreSQL con Prisma ORM</h5>
+                            <p class="font-sans text-xs text-slate-600"><code>prisma/schema.prisma</code> declara los modelos y mapea propiedades a las tablas existentes. <code>src/db/prisma.ts</code> crea un cliente compartido; <code>PrismaLoanRepository</code> usa consultas tipadas y devuelve el modelo de dominio.</p>
+                            <div class="bg-slate-950 text-emerald-300 p-4 rounded-xl font-mono text-[11px] leading-relaxed">POST /loans → middleware DTO → controller → servicio
+                                 → PrismaLoanRepository.create
+                                 → Prisma parametriza INSERT en PostgreSQL
+                                 → PostgreSQL aplica FK, defaults e ID BIGINT
+                                 → el repositorio mapea la fila al dominio</div>
+                            <p class="font-sans text-[11px] text-slate-600">Una sola instancia de <code>PrismaClient</code> se crea por proceso, no por petición. La aplicación carga los componentes PostgreSQL desde <code>.env</code>, compone la URL internamente, espera <code>$connect()</code> antes de escuchar y desconecta al cerrar. PostgreSQL conserva los datos y valida las relaciones.</p>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
                             <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 4.</span> Crear el servicio y sus casos de uso</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/services/loan.service.ts</code> — aquí se implementan acciones de negocio. El constructor recibe <em>la interfaz</em> <code>LoanRepository</code>; no conoce Express ni crea internamente la base de datos. Cada método coordina su regla y delega la lectura/escritura al repositorio. Usa el archivo completo con imports del panel anterior; este fragmento destaca las reglas de creación.</p>
+                            <p class="font-sans text-xs text-slate-600"><code>src/services/loan.service.ts</code> — recibe el contrato <code>LoanRepository</code> y coordina las operaciones, sin conocer Express ni Prisma. Por ahora no agrega validaciones de reglas de negocio al crear/listar: esas reglas quedan aplazadas. Las restricciones estructurales de la base de datos siguen activas.</p>
                             <pre class="bg-slate-950 text-sky-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">constructor(private readonly loanRepository: LoanRepository) {}
 
-async createLoan(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
-  if (!Number.isInteger(input.numeroPc) || input.numeroPc &lt;= 0) {
-    throw new DomainError(
-      'VALIDATION_ERROR',
-      'El número de PCs debe ser un entero positivo.'
-    );
-  }
-  return this.loanRepository.create({
-    roomId: input.roomId.toLowerCase(),
-    instructorId: input.instructorId.toLowerCase(),
-    guardaId: input.guardaId.toLowerCase(),
-    numeroPc: input.numeroPc
-  });
+createLoan(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
+  return this.loanRepository.create(input);
 }
 
-async getLoanDetail(id: number): Promise&lt;Loan&gt; {
-  this.validateId(id);
+async getLoanDetail(id: string): Promise&lt;Loan&gt; {
   const loan = await this.loanRepository.findById(id);
   if (!loan) {
     throw new DomainError('NOT_FOUND', `No existe un préstamo con identificador ${id}.`);
   }
   return loan;
 }</pre>
-                            <p class="font-sans text-[11px] text-slate-600"><strong>Qué hace cada parte:</strong> el constructor recibe el repositorio, lo que permite sustituirlo sin cambiar el servicio. <code>createLoan</code> valida cantidad positiva, normaliza los UUID de las referencias y delega la persistencia. <code>getLoanDetail</code> rechaza ids no enteros/positivos mediante <code>validateId</code>, busca por id y traduce <code>null</code> a <code>NOT_FOUND</code>. El <code>throw</code> detiene el caso de uso; no construye una respuesta HTTP.</p>
+                            <p class="font-sans text-[11px] text-slate-600"><strong>Qué hace cada parte:</strong> el constructor recibe el repositorio por contrato. <code>createLoan</code> delega sin validar cantidad ni normalizar datos; <code>getLoanDetail</code> busca y convierte ausencia en <code>NOT_FOUND</code>. El id ya llega con formato válido porque <code>validateLoanIdParameter</code> actúa antes del controller. El servicio no construye respuestas HTTP.</p>
                             <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg font-sans text-[11px] text-amber-950 space-y-1">
-                                <p><strong>Separación con el middleware:</strong> <code>validateLoanPayload</code> valida la forma y el formato UUID del JSON. El servicio aplica la regla del caso de uso: cantidad positiva. Además, valida que el filtro de búsqueda sea un UUID válido.</p>
-                                <p><strong>Límite actual:</strong> las reglas de existencia de FK requieren repositorios de ambientes y usuarios; el JSON solo persiste préstamos y no valida esas referencias. El modelo ya no representa activos individuales prestados.</p>
+                                <p><strong>Separación con el middleware:</strong> <code>validateLoanPayload</code> valida la forma/tipos del body; <code>validateLoanSearchQuery</code> el formato UUID del filtro; y <code>validateLoanIdParameter</code> el entero BIGINT positivo de la ruta. Son validaciones de transporte, no reglas de negocio.</p>
+                                <p><strong>Integridad que se conserva:</strong> PostgreSQL todavía exige claves foráneas válidas y aplica sus restricciones CHECK. El repositorio traduce los errores conocidos de esas restricciones; no se agrega una validación de cantidad al servicio.</p>
                             </div>
                             <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-lg font-sans text-[11px] text-emerald-950 space-y-2">
-                                <p class="font-bold">Reglas de creación que sí ejecuta el servicio hoy</p>
+                                <p class="font-bold">Responsabilidades del servicio por ahora</p>
                                 <ol class="list-decimal list-inside space-y-1">
-                                    <li>Rechaza número de PCs no entero o no positivo.</li>
-                                    <li>Normaliza los UUID de ambiente y personas a minúsculas antes de guardar.</li>
-                                    <li>Si las reglas pasan, llama al repositorio; este crea el id, inicia el estado pendiente y fija las fechas.</li>
+                                    <li>Recibe el DTO que ya pasó la validación HTTP.</li>
+                                    <li>Delega la creación/listado al repositorio, que usa Prisma.</li>
+                                    <li>Traduce el resultado ausente de una búsqueda a <code>NOT_FOUND</code>.</li>
                                 </ol>
-                                <p><strong>Límite de alcance:</strong> el DTO lleva roomId, instructorId, guardaId y numeroPc. El repositorio JSON solo persiste préstamos y no hay repositorios de ambientes/usuarios para verificar existencia y estado. Sin asociación de equipos, no se puede saber qué activos se entregaron o recibieron.</p>
+                                <p><strong>Alcance:</strong> la transición de aceptación ya implementada se conserva para no cambiar ese endpoint. Si se quiere posponer también esa regla, conviene dejar la ruta explícitamente en <code>501</code> en vez de aceptar transiciones inválidas.</p>
                             </div>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
                             <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 5.</span> Comprender la aceptación como transición de estado</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>LoanService.acceptLoan</code> primero valida el identificador con <code>validateId</code> y pide al repositorio cambiar el estado únicamente si el valor actual sigue siendo <code>PENDIENTE_APROBACION</code>. Si no se actualizó, consulta el registro para distinguir dos situaciones: inexistente (<code>404</code>) o ya aceptado/incompatible (<code>409</code>).</p>
+                            <p class="font-sans text-xs text-slate-600"><code>validateLoanIdParameter</code> comprueba el formato antes de llegar al servicio. <code>LoanService.acceptLoan</code> mantiene el comportamiento que ya tenía el endpoint: solo acepta desde <code>PENDIENTE_APROBACION</code>; si no se actualizó, diferencia inexistente (<code>404</code>) de ya aceptado (<code>409</code>).</p>
                             <pre class="bg-slate-950 text-sky-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">const updated = await repository.updateStatus(
   id,
   'PENDIENTE_APROBACION',
@@ -939,24 +1072,25 @@ if (updated) return updated;
 const current = await repository.findById(id);
 if (!current) throw new DomainError('NOT_FOUND', 'No existe.');
 throw new DomainError('CONFLICT', 'Ya fue aceptado.');</pre>
-                            <p class="font-sans text-[11px] text-slate-600">La condición de estado evita que dos solicitudes concurrentes del mismo proceso acepten dos veces el mismo préstamo. El repositorio JSON serializa las operaciones de esta instancia; una base PostgreSQL deberá hacer esa condición dentro de un <code>UPDATE ... WHERE estado = ...</code> atómico y coordinar varias instancias.</p>
+                            <p class="font-sans text-[11px] text-slate-600">La condición se ejecuta en una única operación condicional de PostgreSQL mediante Prisma <code>updateMany</code> con <code>id</code> y <code>estado</code> esperados. Así dos solicitudes concurrentes no pueden aceptar dos veces el mismo préstamo, incluso con varias instancias del servidor.</p>
                             <div class="bg-sky-50 border border-sky-200 p-3 rounded-lg font-sans text-[11px] text-sky-950 space-y-1">
-                                <p><strong>Reglas aplicadas ahora:</strong> id entero positivo; el préstamo debe existir; transición única de pendiente a aceptado; se registra <code>acceptedAt</code>; si ya no está pendiente, se devuelve <code>409 CONFLICT</code>.</p>
+                                <p><strong>Alcance elegido:</strong> se aplazan las validaciones de negocio al crear/listar. Se conserva solo la transición de aceptación existente para no cambiar el comportamiento pedido explícitamente; el id se valida en el middleware, no en el servicio.</p>
                                 <p><strong>Falta para la regla de autorización:</strong> guardar quién aceptó y comprobar que el actor sea el instructor autorizado. El endpoint actual no tiene autenticación; no debe aceptar un <code>instructorId</code> enviado libremente en el body como prueba de identidad. Esa regla se implementa cuando exista identidad verificada y se pase al caso de uso desde el contexto autenticado.</p>
                             </div>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
                             <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 6.</span> Conectar las dependencias en un solo lugar</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/container.ts</code> es el <strong>punto de composición</strong> (también llamado composition root): el lugar que decide qué implementaciones concretas usa la aplicación y conecta sus dependencias. No es un contenedor de datos, no guarda préstamos y no contiene reglas de negocio. Hoy elige memoria; mañana podrá elegir PostgreSQL.</p>
-                            <pre class="bg-slate-950 text-amber-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">import { LoanService } from './services/loan.service';
-import { InMemoryLoanRepository } from './repositories/in-memory-loan.repository';
+                            <p class="font-sans text-xs text-slate-600"><code>src/container.ts</code> es el <strong>punto de composición</strong>: el lugar que decide qué implementación usa la aplicación. Actualmente crea el repositorio Prisma e inyecta el contrato en el servicio. No contiene reglas de negocio ni consultas.</p>
+                            <pre class="bg-slate-950 text-amber-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">import { prisma } from './db/prisma';
+import { PrismaLoanRepository } from './repositories/prisma-loan.repository';
+import { LoanService } from './services/loan.service';
 
-const loanRepository = new InMemoryLoanRepository();
+const loanRepository = new PrismaLoanRepository(prisma);
 export const loanService = new LoanService(loanRepository);</pre>
                             <div class="bg-sky-50 border border-sky-200 p-3 rounded-lg font-sans text-[11px] text-sky-950 space-y-2">
-                                <p><strong>Lee la conexión de derecha a izquierda:</strong> <code>InMemoryLoanRepository</code> implementa el contrato <code>LoanRepository</code>; el servicio recibe ese repositorio por su constructor; el controller importa el <code>loanService</code> ya construido. El controller no crea repositorios ni decide dónde se persiste.</p>
-                                <p><strong>¿Por qué se crea una sola vez?</strong> El módulo se carga al iniciar y todas las peticiones comparten la instancia y su <code>Map</code>. Si se creara un repositorio nuevo por petición, cada una vería datos distintos. Al reiniciar el proceso, el Map vuelve a empezar vacío.</p>
+                                <p><strong>Lee la conexión de derecha a izquierda:</strong> el repositorio implementa <code>LoanRepository</code>; el servicio recibe esa abstracción y el controller importa el servicio construido. El controller nunca importa Prisma.</p>
+                                <p><strong>¿Por qué un cliente compartido?</strong> Prisma administra el pool de conexiones para el proceso. Crear un cliente por petición multiplicaría conexiones y recursos; la instancia se conecta al iniciar y se desconecta en el apagado ordenado.</p>
                             </div>
                             <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-lg font-sans text-[11px] text-emerald-950 space-y-2">
                                 <p class="font-bold">¿Qué hago cuando agregue los demás módulos?</p>
@@ -966,27 +1100,27 @@ export const loanService = new LoanService(loanRepository);</pre>
                                     <li>Exportar el servicio construido para que su controller lo use, igual que hace hoy <code>LoanController</code> con <code>loanService</code>.</li>
                                     <li>Montar las rutas del módulo en el router de la API. El container no registra rutas.</li>
                                 </ol>
-                                <pre class="bg-emerald-950 text-emerald-100 p-3 rounded-lg overflow-x-auto">const loanRepository = new InMemoryLoanRepository();
+                                <pre class="bg-emerald-950 text-emerald-100 p-3 rounded-lg overflow-x-auto">const loanRepository = new PrismaLoanRepository(prisma);
 export const loanService = new LoanService(loanRepository);
 
-const roomRepository = new InMemoryRoomRepository();
+const roomRepository = new PrismaRoomRepository(prisma);
 export const roomService = new RoomService(roomRepository);
 
-const equipmentRepository = new InMemoryEquipmentRepository();
+const equipmentRepository = new PrismaEquipmentRepository(prisma);
 export const equipmentService = new EquipmentService(equipmentRepository);</pre>
-                                <p>El fragmento de usuarios/ambientes/equipos ilustra el patrón para el futuro; crea esos nombres solo cuando existan sus clases reales. No se crea un container por ruta ni uno por cada petición. Si más adelante hay muchas dependencias, se pueden agrupar por módulo (por ejemplo <code>loan.container.ts</code> y <code>equipment.container.ts</code>); no hace falta anticiparlo ahora.</p>
+                                <p>Los repositorios de usuarios/ambientes/equipos son una evolución por implementar; el esquema Prisma ya declara esos modelos, pero sus endpoints aún no existen. Comparte el cliente y crea esos adaptadores solo cuando se implementen los casos de uso.</p>
                             </div>
                             <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg font-sans text-[11px] text-amber-950 space-y-2">
-                                <p><strong>¿Y al cambiar a PostgreSQL?</strong> Se crea un adaptador <code>PostgresLoanRepository</code> que implementa el mismo contrato. En este archivo se cambia la construcción de <code>InMemoryLoanRepository</code> por la construcción del adaptador PostgreSQL y se le entrega la conexión compartida. <code>LoanService</code> y <code>LoanController</code> siguen dependiendo de sus contratos, no del driver SQL.</p>
-                                <pre class="bg-amber-950 text-amber-100 p-3 rounded-lg overflow-x-auto">const loanRepository = new PostgresLoanRepository(database);
+                                <p><strong>La conexión ya usa PostgreSQL:</strong> <code>PrismaLoanRepository</code> implementa el contrato con el cliente compartido. El servicio y el controller no dependen de Prisma ni del driver, solo del contrato de repositorio.</p>
+                                <pre class="bg-amber-950 text-amber-100 p-3 rounded-lg overflow-x-auto">const loanRepository = new PrismaLoanRepository(prisma);
 export const loanService = new LoanService(loanRepository);</pre>
-                                <p>La regla para decidir qué instancia crear vive aquí; las reglas de préstamo viven en <code>LoanService</code>; las consultas y escrituras viven en el repositorio; las respuestas HTTP viven en el controller. Esa separación es el objetivo.</p>
+                                <p>La regla para decidir qué instancia crear vive aquí; las consultas y escrituras viven en el repositorio; las respuestas HTTP viven en el controller. Las reglas de negocio aún no definidas se agregan en el servicio cuando se acuerden.</p>
                             </div>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
                             <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 7.</span> Hacer que el controlador delegue al servicio</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/controllers/loan.controller.ts</code> — recibe los valores de Express, llama al caso de uso y transforma el resultado en HTTP. Para crear, retorna <code>201 Created</code>; para consultar o aceptar, <code>200 OK</code>. El controlador no implementa reglas de inventario ni consulta directamente el repositorio.</p>
+                            <p class="font-sans text-xs text-slate-600"><code>src/controllers/loan.controller.ts</code> — recibe los valores de Express, llama al servicio y transforma el resultado en HTTP. Para crear, retorna <code>201 Created</code>; para consultar o aceptar, <code>200 OK</code>. Cada handler async recibe <code>next</code> y delega errores al middleware global.</p>
                             <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">public static createLoan = async (
   req: Request&lt;Record&lt;string, string&gt;, unknown, ICreateLoanDTO&gt;,
   res: Response
@@ -994,22 +1128,22 @@ export const loanService = new LoanService(loanRepository);</pre>
   const loan = await loanService.createLoan(req.body);
   res.status(201).json({ success: true, data: loan });
 };</pre>
-                            <p class="font-sans text-[11px] text-slate-600">El handler es <code>async</code> porque el servicio/repository devuelven promesas. Express 5 deriva automáticamente un rechazo no capturado al middleware global. No se debe capturar el error y silenciarlo. En <code>getLoansByFilter</code> todavía hay una comprobación del query <code>aula</code> en el controller: es validación de transporte, no regla del servicio; al generalizarla, muévela a un middleware de query para dejar la frontera HTTP homogénea.</p>
+                            <p class="font-sans text-[11px] text-slate-600">El handler es <code>async</code> porque espera al servicio. Cada método recibe <code>next: NextFunction</code>; el <code>catch</code> llama <code>next(error)</code> para que <code>globalErrorHandler</code> centralice el status y la respuesta. Express 5 también reenvía rechazos automáticamente, pero el patrón explícito documenta cómo transferir el error sin silenciarlo. El controller adapta entrada/salida; body, query e id se validan en middleware.</p>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
                             <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 8.</span> Conectar router y mantener la validación de la Sesión 3</h5>
                             <p class="font-sans text-xs text-slate-600"><code>src/routes/loan.routes.ts</code> ya define la secuencia del POST. El validador corre antes del controlador; si responde <code>400</code>, el caso de uso no se ejecuta. Las demás rutas delegan al controlador correspondiente.</p>
                             <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">router.post('/', validateLoanPayload, LoanController.createLoan);
-router.get('/search', LoanController.getLoansByFilter);
-router.get('/:id', LoanController.getLoanById);
-router.put('/:id/accept', LoanController.acceptLoanInventory);</pre>
+router.get('/search', validateLoanSearchQuery, LoanController.getLoansByFilter);
+router.get('/:id', validateLoanIdParameter, LoanController.getLoanById);
+router.put('/:id/accept', validateLoanIdParameter, LoanController.acceptLoanInventory);</pre>
                             <p class="font-sans text-[11px] text-slate-600">El orden también evita que el parámetro <code>/:id</code> capture por error la ruta literal <code>/search</code>.</p>
                         </article>
 
                         <article class="border border-slate-200 rounded-xl p-4 space-y-3">
                             <h5 class="font-sans font-bold text-sm"><span class="text-sena-green">Paso 9.</span> Traducir errores al protocolo HTTP en un único punto</h5>
-                            <p class="font-sans text-xs text-slate-600"><code>src/middlewares/errorHandler.middleware.ts</code> — reconoce <code>DomainError</code> y mapea sus códigos a HTTP: <code>VALIDATION_ERROR → 400</code>, <code>NOT_FOUND → 404</code>, <code>CONFLICT → 409</code>. El servicio no necesita conocer esos números.</p>
+                            <p class="font-sans text-xs text-slate-600"><code>src/middlewares/errorHandler.middleware.ts</code> — reconoce <code>DomainError</code> y mapea sus códigos a HTTP: <code>VALIDATION_ERROR → 400</code>, <code>NOT_FOUND → 404</code>, <code>CONFLICT → 409</code>. El servicio no conoce esos números; el controller pasa cualquier excepción con <code>next(error)</code>.</p>
                             <ul class="font-sans text-[11px] text-slate-600 list-disc list-inside space-y-1">
                                 <li>JSON malformado sigue respondiendo <code>400</code> (error del parser, no del servicio).</li>
                                 <li>Errores desconocidos se registran internamente y responden <code>500</code> genérico.</li>
@@ -1024,6 +1158,7 @@ router.put('/:id/accept', LoanController.acceptLoanInventory);</pre>
                             <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">npm run build
 npm run dev</pre>
                             <p class="font-sans text-xs text-slate-600">Envía desde Postman/Thunder Client o una terminal estas peticiones y comprueba tanto el status como el JSON:</p>
+                            <p class="font-sans text-[11px] text-slate-600">Antes, crea la base y ejecuta <code>bd.sql</code>. Ese script asigna UUID aleatorios a las salas; obtén el de la sala de prueba con <code>SELECT id FROM rooms WHERE nombre = 'Sala 301';</code> y sustituye el UUID de ejemplo en las peticiones. Los UUID de instructor y guarda del ejemplo sí corresponden a los usuarios sembrados por el script.</p>
                             <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">POST http://localhost:5000/api/v1/loans
 {
   "roomId": "d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44",
@@ -1033,11 +1168,11 @@ npm run dev</pre>
 }
 Esperado: 201 y data.id
 
-GET  http://localhost:5000/api/v1/loans/search?roomId=d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44 → 200
-GET  http://localhost:5000/api/v1/loans/999 → 404 NOT_FOUND
-PUT  http://localhost:5000/api/v1/loans/1/accept → 200
-PUT  http://localhost:5000/api/v1/loans/1/accept → 409 CONFLICT</pre>
-                            <p class="font-sans text-[11px] text-slate-600">Los UUID deben tener formato válido; el repositorio en memoria no comprueba que existan en las tablas. Usa el id que realmente devolvió el POST en las pruebas PUT. Reiniciar el servidor borra los préstamos.</p>
+GET  http://localhost:&lt;PORT&gt;/api/v1/loans/search?roomId=&lt;UUID real&gt; → 200
+GET  http://localhost:&lt;PORT&gt;/api/v1/loans/999 → 404 NOT_FOUND
+PUT  http://localhost:&lt;PORT&gt;/api/v1/loans/&lt;id devuelto&gt;/accept → 200
+PUT  http://localhost:&lt;PORT&gt;/api/v1/loans/&lt;id devuelto&gt;/accept → 409 CONFLICT</pre>
+                            <p class="font-sans text-[11px] text-slate-600">Los UUID deben tener formato válido y corresponder a filas existentes; PostgreSQL hace cumplir las FK. Usa el <code>data.id</code> que devolvió POST y envíalo como texto. Reiniciar el servidor no borra préstamos; se almacenan en PostgreSQL.</p>
                         </article>
 
                         <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl font-sans space-y-2">
@@ -1048,7 +1183,7 @@ PUT  http://localhost:5000/api/v1/loans/1/accept → 409 CONFLICT</pre>
                                 <li><code>validateLoanPayload</code> comprueba el contrato del DTO. Si falla, contesta 400 y el flujo termina.</li>
                                 <li><code>LoanController</code> toma el body y llama a <code>loanService.createLoan</code>.</li>
                                 <li><code>LoanService</code> aplica la regla de negocio y pide la creación al contrato <code>LoanRepository</code>.</li>
-                                <li><code>InMemoryLoanRepository</code> genera id/estado/fechas y devuelve el préstamo.</li>
+                                <li><code>PrismaLoanRepository</code> ejecuta el insert; PostgreSQL genera id/estado/fechas y el repositorio mapea la fila.</li>
                                 <li>El controller responde 201 con el recurso creado.</li>
                             </ol>
                         </div>
@@ -1060,7 +1195,7 @@ PUT  http://localhost:5000/api/v1/loans/1/accept → 409 CONFLICT</pre>
                                     <thead><tr class="border-b border-amber-300"><th class="p-2">Regla</th><th class="p-2">Dónde se aplica</th><th class="p-2">Estado</th></tr></thead>
                                     <tbody class="text-amber-950">
                                         <tr class="border-b border-amber-200"><td class="p-2">Payload tiene los campos y tipos esperados</td><td class="p-2">validateLoanPayload</td><td class="p-2">Implementada; 400 si falla</td></tr>
-                                        <tr class="border-b border-amber-200"><td class="p-2">Cantidad de computadores positiva</td><td class="p-2">LoanService.createLoan</td><td class="p-2">Implementada; DomainError 400</td></tr>
+                                        <tr class="border-b border-amber-200"><td class="p-2">Cantidad de computadores positiva</td><td class="p-2">PostgreSQL CHECK (sin regla en LoanService)</td><td class="p-2">La regla de negocio del servicio queda aplazada; se conserva integridad de BD</td></tr>
                                         <tr class="border-b border-amber-200"><td class="p-2">Nuevo préstamo inicia pendiente</td><td class="p-2">LoanRepository.create</td><td class="p-2">Implementada</td></tr>
                                         <tr class="border-b border-amber-200"><td class="p-2">Aceptar solo una vez desde pendiente</td><td class="p-2">Service + updateStatus condicional</td><td class="p-2">Implementada; 409 en conflicto</td></tr>
                                         <tr class="border-b border-amber-200"><td class="p-2">Ambiente/personas existen y están activos</td><td class="p-2">Service + repositorios de catálogos</td><td class="p-2">Pendiente: no existen esos adaptadores</td></tr>
@@ -1079,7 +1214,7 @@ PUT  http://localhost:5000/api/v1/loans/1/accept → 409 CONFLICT</pre>
 export type LoanStatus = 'PENDIENTE_APROBACION' | 'APROBADO_Y_FIRMADO';
 
 export interface Loan extends ICreateLoanDTO {
-  id: number;
+  id: string;
   estado: LoanStatus;
   createdAt: string;
   acceptedAt: string | null;
@@ -1088,24 +1223,16 @@ export interface Loan extends ICreateLoanDTO {
 export interface LoanRepository {
   create(input: ICreateLoanDTO): Promise&lt;Loan&gt;;
   findAll(filters?: { roomId?: string }): Promise&lt;Loan[]&gt;;
-  findById(id: number): Promise&lt;Loan | null&gt;;
-  updateStatus(id: number, expectedStatus: LoanStatus, status: LoanStatus): Promise&lt;Loan | null&gt;;
+  findById(id: string): Promise&lt;Loan | null&gt;;
+  updateStatus(id: string, expectedStatus: LoanStatus, status: LoanStatus): Promise&lt;Loan | null&gt;;
 }</pre>
 
                     <span class="text-amber-400 font-bold block pt-4">Referencia del caso de uso: src/services/loan.service.ts</span>
-                    <pre class="bg-slate-950 text-sky-300 p-5 rounded-2xl overflow-x-auto text-[11px] leading-relaxed">public async createLoan(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
-                      if (!Number.isInteger(input.numeroPc) || input.numeroPc &lt;= 0) {
-                        throw new DomainError('VALIDATION_ERROR', 'El número de PCs debe ser positivo.');
-                      }
-                      return this.loanRepository.create({
-                        roomId: input.roomId.toLowerCase(),
-                        instructorId: input.instructorId.toLowerCase(),
-                        guardaId: input.guardaId.toLowerCase(),
-                        numeroPc: input.numeroPc
-                      });
+                    <pre class="bg-slate-950 text-sky-300 p-5 rounded-2xl overflow-x-auto text-[11px] leading-relaxed">public createLoan(input: ICreateLoanDTO): Promise&lt;Loan&gt; {
+  return this.loanRepository.create(input);
 }
 
-public async acceptLoan(id: number): Promise&lt;Loan&gt; {
+public async acceptLoan(id: string): Promise&lt;Loan&gt; {
   const updated = await this.loanRepository.updateStatus(
     id, 'PENDIENTE_APROBACION', 'APROBADO_Y_FIRMADO'
   );
@@ -1117,9 +1244,13 @@ public async acceptLoan(id: number): Promise&lt;Loan&gt; {
 
                     <span class="text-amber-400 font-bold block pt-4">Referencia HTTP — controller → service → repositorio</span>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <pre class="bg-slate-950 text-emerald-300 p-5 rounded-2xl overflow-x-auto text-[11px] leading-relaxed">// Controller async (Express 5)
-const loan = await loanService.createLoan(req.body);
-res.status(201).json({ success: true, data: loan });
+                        <pre class="bg-slate-950 text-emerald-300 p-5 rounded-2xl overflow-x-auto text-[11px] leading-relaxed">// Controller async: propaga explícitamente el error
+try {
+  const loan = await loanService.createLoan(req.body);
+  res.status(201).json({ success: true, data: loan });
+} catch (error) {
+  next(error);
+}
 
 // Reglas conocidas: DomainError
 VALIDATION_ERROR → 400
@@ -1136,27 +1267,28 @@ if (err instanceof DomainError) {
 // cualquier error inesperado: log interno y 500 genérico.</pre>
                     </div>
                     <div class="bg-emerald-950/60 p-4 rounded-xl text-[11px] text-emerald-100 space-y-2">
-                        <p><strong>Conexión con la Sesión 3:</strong> el validador de payload conserva su respuesta directa <code>400</code>; los fallos del servicio se lanzan como errores de dominio y Express 5 deriva automáticamente el rechazo del handler async al <code>globalErrorHandler</code>. No se atrapa el error para ocultarlo ni se convierte cualquier fallo en un <code>404</code>.</p>
+                        <p><strong>Conexión con la Sesión 3:</strong> los middlewares HTTP contestan <code>400</code> si el formato no corresponde; el controller usa <code>try/catch</code> y pasa los errores a <code>next(error)</code>; <code>globalErrorHandler</code> centraliza su traducción. No se atrapa el error para ocultarlo ni se convierte cualquier fallo en un <code>404</code>.</p>
                         <p><strong>Rutas de la API actual:</strong> crear préstamo → <code>201</code>; búsqueda/detalle/aceptación → <code>200</code>; identificador inválido → <code>400</code>; inexistente → <code>404</code>; doble aceptación → <code>409</code>; fallo inesperado → <code>500</code>. La ruta de prueba de error solo se registra fuera de producción y antes del 404. La aceptación todavía no implementa autenticación/autorización; no debe considerarse lista para producción hasta protegerla con una identidad verificada como indica la Sesión 3.</p>
                     </div>
                     <div class="bg-amber-950/50 p-4 rounded-xl text-[11px] text-amber-100 space-y-2">
-                        <p><strong>Composición actual:</strong> <code>src/container.ts</code> inyecta <code>InMemoryLoanRepository</code> en el servicio. Los préstamos existen solo mientras el proceso siga activo.</p>
-                        <p><strong>Persistencia futura:</strong> se agrega un adaptador PostgreSQL que implemente <code>LoanRepository</code> y se cambia la composición; ni el controlador ni las reglas del servicio necesitan importar el driver SQL.</p>
+                        <p><strong>Composición actual:</strong> <code>src/container.ts</code> inyecta <code>PrismaLoanRepository</code>. El cliente compone su conexión a partir de las variables PostgreSQL separadas del <code>.env</code>, y PostgreSQL conserva los préstamos entre reinicios.</p>
+                        <p><strong>Separación conservada:</strong> ni el controller ni el servicio importan Prisma; solo el repositorio habla con la base y adapta errores de persistencia reconocidos.</p>
                     </div>
                     <div class="bg-white text-slate-800 p-5 rounded-2xl space-y-3">
                         <h4 class="font-sans font-bold text-sm">Práctica: verificar que cada capa cumple su responsabilidad</h4>
+                        <p class="font-sans text-[11px] text-slate-600">Sustituye los UUID por los consultados en tu PostgreSQL; <code>bd.sql</code> genera UUID para las salas y sus valores pueden variar entre instalaciones. El puerto es el configurado en <code>PORT</code> (por defecto, <code>5000</code>).</p>
                         <pre class="bg-slate-950 text-emerald-300 p-4 rounded-xl overflow-x-auto text-[11px] leading-relaxed">POST /api/v1/loans
-{ "roomId": "d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44",
+{ "roomId": "&lt;UUID real de una sala&gt;",
   "instructorId": "c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33",
   "guardaId": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22",
   "numeroPc": 1 }
-→ 201; luego GET /api/v1/loans/search?roomId=d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44 → 200
+→ 201; luego GET /api/v1/loans/search?roomId=&lt;UUID real&gt; → 200
 
-POST /api/v1/loans con numeroPc: 0 → 400 VALIDATION_ERROR
+POST /api/v1/loans con numeroPc: 0 → PostgreSQL CHECK, traducido a 400
 GET /api/v1/loans/99999 → 404 NOT_FOUND
-PUT /api/v1/loans/1/accept dos veces → 200 y después 409 CONFLICT
+PUT /api/v1/loans/&lt;id devuelto&gt;/accept dos veces → 200 y después 409 CONFLICT
 Cuerpo JSON malformado → 400; GET /__test/error (desarrollo) → 500</pre>
-                        <p class="font-sans text-[11px] text-slate-600">Confirma también que una petición inválida no crea un registro y que el logger de la Sesión 3 se ejecuta antes del validador. Reinicia el servidor y comprueba que el almacenamiento en memoria comienza vacío.</p>
+                        <p class="font-sans text-[11px] text-slate-600">Confirma que una petición inválida no crea un registro y que el logger de la Sesión 3 se ejecuta antes del validador. Reinicia el servidor y consulta nuevamente: el préstamo debe seguir en PostgreSQL.</p>
                     </div>
                 </div>
             </div>
@@ -1202,13 +1334,13 @@ Cuerpo JSON malformado → 400; GET /__test/error (desarrollo) → 500</pre>
             const scenarios = {
                 create: {
                     http: 201,
-                    pipeline: ["requestLogger", "validateLoanPayload → next()", "LoanController.createLoan", "LoanService.createLoan", "InMemoryLoanRepository.create"],
-                    result: { success: true, data: { id: 1, roomId: "d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44", instructorId: "c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33", guardaId: "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22", numeroPc: 1, estado: "PENDIENTE_APROBACION" } }
+                    pipeline: ["requestLogger", "validateLoanPayload → next()", "LoanController.createLoan", "LoanService.createLoan", "PrismaLoanRepository.create", "PostgreSQL"],
+                    result: { success: true, data: { id: "1", roomId: "d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44", instructorId: "c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33", guardaId: "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22", numeroPc: 1, estado: "PENDIENTE_APROBACION" } }
                 },
                 rule: {
                     http: 400,
-                    pipeline: ["requestLogger", "validateLoanPayload → next()", "LoanController.createLoan", "LoanService.createLoan → DomainError(VALIDATION_ERROR)", "globalErrorHandler"],
-                    result: { success: false, code: "VALIDATION_ERROR", error: "El número de PCs debe ser positivo." }
+                pipeline: ["requestLogger", "validateLoanPayload → next()", "LoanController.createLoan", "LoanService.createLoan", "PrismaLoanRepository.create", "PostgreSQL CHECK → DomainError(VALIDATION_ERROR)", "globalErrorHandler"],
+                result: { success: false, code: "VALIDATION_ERROR", error: "Los datos del préstamo incumplen una restricción de la base de datos." }
                 },
                 missing: {
                     http: 404,
